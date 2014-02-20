@@ -5,23 +5,28 @@ module Types where
 import Utils
 import Common
 
-data Constructor = Constructor {
-                     name :: String,
-                     fields :: [String]
-} deriving (Show)
+data RubyData = Constructor {
+                  name :: String,
+                  fields :: [String]
+                }
+                | RubyLine String
+                | UnchangedLine String
 
 class Ruby a where
     toRuby :: a -> String
 
-instance Ruby Constructor where
-    toRuby (Constructor n f) = printf "%s = Struct.new(%s)" n (join "," $ map (\name -> ":" ++ name) f)
+instance Ruby RubyData where
+    toRuby (Constructor n f) = printf "%s = Struct.new(%s)" n params
+              where params = if null f
+                               then "nil"
+                               else (join "," $ map (\name -> ":" ++ name) f)
+    toRuby (RubyLine str) = str
+    toRuby (UnchangedLine str) = str
 
 data CodeState = CodeState {
-                   _classes :: [Constructor]
+                   _classes :: [RubyData]
 }
 
 makeLenses  ''CodeState
 
 defaultState = CodeState []
-
-
