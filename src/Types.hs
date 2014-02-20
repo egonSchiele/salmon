@@ -2,9 +2,8 @@
 
 module Types where
 
-import Control.Lens
 import Utils
-import Text.Printf
+import Common
 
 data Constructor = Constructor {
                      name :: String,

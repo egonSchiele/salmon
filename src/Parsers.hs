@@ -2,7 +2,7 @@
 
 module Parsers where
 
-import Text.Parsec
+import Common
 import Types
 import Utils
 

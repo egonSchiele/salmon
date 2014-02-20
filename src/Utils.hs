@@ -1,4 +1,4 @@
 module Utils where
-import Data.List
+import Common
 
 join chr list = concat $ intersperse chr list
