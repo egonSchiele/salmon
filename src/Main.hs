@@ -3,20 +3,22 @@ import Types
 import Utils
 import Parsers
 
--- if you don't use try, and the first parser consumes some input,
--- parser #2 doesn't use that input
-(<||>) p1 p2 = try(p1) <|> p2
-
 maybeModifyState [] = return ()
 maybeModifyState (con@(Constructor n f):xs) = do
     modify $ over classes (con:)
     maybeModifyState xs
+
+maybeModifyState [RunBlock] = modify $ set runBlock True
+maybeModifyState [EndRunBlock] = modify $ set runBlock False
 maybeModifyState x = return ()
 
 parseLine :: String -> StateT CodeState IO [RubyData]
 parseLine line = do
-  case parse (dataParser <||> newParser) "" line of
-      Left err -> return $ [UnchangedLine (show err ++ line)]
+  state <- get
+  let parsers_ = (dataParser <||> newParser <||> runBlockParser)
+      parsers = if (state ^. runBlock) then (runBlockStatement <||> parsers_) else parsers_
+  case parse parsers "" line of
+      Left err -> return $ [UnchangedLine line]
       Right result -> do
                 maybeModifyState result
                 return result
@@ -28,8 +30,15 @@ convert filename = do
 
     liftIO $ writeFile ("_" ++ filename) (join "\n" $ map toRuby (concat newContents))
 
+printHelp = do
+    putStrLn "salmon adds some extra syntax to Ruby."
+    putStrLn "In particular, you can use `data Maybe = Nothing | Just a` now."
+    putStrLn "Give it a filename and it will generate _filename.rb."
+
 main = do
     args <- getArgs
     case args of
-      [] -> runStateT (convert "test.rb") defaultState
-      [filename] -> runStateT (convert filename) defaultState
+      ["-h"] -> printHelp
+      ["--help"] -> printHelp
+      [filename] -> runStateT (convert filename) defaultState >> return ()
+      _ -> printHelp

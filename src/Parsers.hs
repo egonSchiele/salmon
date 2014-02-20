@@ -34,9 +34,31 @@ newParser = do
     front <- manyTill anyChar (lookAhead upper)
     first <- upper
     name_ <- many1 alphaNum
-    spaces
+    many1 $ char ' '
     params <- (many1 anyChar) `sepBy` (many1 space)
     back <- option "" $ many1 anyChar
     let className = first:name_
         str = printf "%s%s.new(%s)%s" front className (join "," params) back
     return $ [RubyLine str]
+
+runBlockParser :: Stream s m Char => ParsecT s u m [RubyData]
+runBlockParser = do
+    string "run"
+    many1 $ char ' '
+    string "do"
+    return $ [RunBlock]
+
+endBlock :: Stream s m Char => ParsecT s u m [RubyData]
+endBlock = do
+    string "end"
+    return $ [EndRunBlock]
+
+runBlockLine :: Stream s m Char => ParsecT s u m [RubyData]
+runBlockLine = do
+    line <- many1 anyChar
+    let str = printf "%s.run_with()" line
+    return $ [RubyLine str]
+
+runBlockStatement :: Stream s m Char => ParsecT s u m [RubyData]
+runBlockStatement = endBlock <||> runBlockLine
+

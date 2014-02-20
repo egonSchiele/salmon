@@ -11,6 +11,8 @@ data RubyData = Constructor {
                 }
                 | RubyLine String
                 | UnchangedLine String
+                | RunBlock
+                | EndRunBlock
 
 class Ruby a where
     toRuby :: a -> String
@@ -22,11 +24,14 @@ instance Ruby RubyData where
                                else (join "," $ map (\name -> ":" ++ name) f)
     toRuby (RubyLine str) = str
     toRuby (UnchangedLine str) = str
+    toRuby (RunBlock) = ""
+    toRuby (EndRunBlock) = ""
 
 data CodeState = CodeState {
-                   _classes :: [RubyData]
+                   _classes :: [RubyData],
+                   _runBlock :: Bool
 }
 
 makeLenses  ''CodeState
 
-defaultState = CodeState []
+defaultState = CodeState [] False
