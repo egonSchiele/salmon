@@ -24,6 +24,7 @@ class Just
   end
 
 end
+```
 
 ### Single-line functions
 
@@ -205,7 +206,7 @@ This is because more objects are encouraged to be mappable (i.e. functors).
 
 For example, here's `Maybe` as a functor:
 
-```
+```ruby
 data Maybe val
 
 class Maybe
