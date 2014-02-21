@@ -257,3 +257,25 @@ RED = :red
 BLUE = :blue
 GREEN = :green
 ```
+
+### Method signatures - DONE
+
+Run-time checking using [contracts.ruby](http://github.com/egonschiele/contracts.ruby):
+
+```
+double :: Num -> Num
+double x = x * 2
+```
+
+becomes:
+
+```ruby
+require 'rubygems'
+require 'contracts'
+include Contracts
+
+Contract Num => Num
+def double x
+  x * 2
+end
+```

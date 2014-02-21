@@ -1,6 +1,6 @@
 data Person name age
 
-Contract Person, Person => nil
+addAges :: Person -> Person -> Num
 addAges p1 p2 := p1.age + p2.age
 
 say_hello := p "hello world"

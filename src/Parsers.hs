@@ -99,3 +99,9 @@ enumParser = do
     string "enum "
     options <- ((many1 identifier) `sepBy1` (string " | "))
     return $ Enum options
+
+contractParser :: RubyParser
+contractParser = do
+    manyTill identifier (try $ string " :: ")
+    params <- ((many1 $ noneOf " ") `sepBy1` (string " -> "))
+    return $ Contract (init params) (last params)

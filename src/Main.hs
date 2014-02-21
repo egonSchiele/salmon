@@ -5,6 +5,7 @@ import Parsers
 
 maybeModifyState o@(Operator _ _) = modify $ over operators (o:)
 maybeModifyState c@(Class _ _) = modify $ over classes (c:)
+maybeModifyState c@(Contract _ _) = modify $ over headExtras (union [Contracts])
 maybeModifyState x = return ()
 
 hasUnresolved [] = False
@@ -21,11 +22,11 @@ isUnresolved _ = False
 parseRuby :: Ruby -> StateT CodeState IO Ruby
 parseRuby (Unresolved line) = do
   state <- get
-  case parse (classParser <||> functionParser <||> operatorParser <||> enumParser <||> (embeddedParser state) <||> idParser) "" line of
+  case parse (classParser <||> functionParser <||> operatorParser <||> enumParser <||> contractParser <||> (embeddedParser state) <||> idParser) "" line of
       Left err -> error (show err)
       Right result -> do
                 maybeModifyState result
-                -- liftIO $ print result
+                --liftIO $ print result
                 parseRuby result
 
 -- debugging
@@ -59,7 +60,10 @@ convert :: String -> StateT CodeState IO ()
 convert filename = do
     contents <- liftIO $ lines <$> readFile filename
     rubyLines <- forM (map Unresolved contents) parseRuby
-    let newContents = toRuby <$> (concatRuby rubyLines)
+    state <- get
+    let headContents = toRuby <$> (state ^. headExtras)
+        bodyContents = toRuby <$> (concatRuby rubyLines)
+        newContents = headContents ++ bodyContents
         newFilename = dropEnd 4 filename ++ ".rb"
   
     liftIO $ writeFile (newFilename) (join "\n" newContents)

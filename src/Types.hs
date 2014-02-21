@@ -35,40 +35,54 @@ data Ruby = Class {
                 alphaName :: String
             }
             | Enum [String]
+            | Contract {
+                input :: [String],
+                output :: String
+            }
             deriving (Show)
 
-toRuby :: Ruby -> String
-toRuby (Class n f) = printf "%s = Struct.new(%s)" n params_
-  where params_ = if null f
-                    then "nil"
-                    else (join ", " $ map (\name -> ":" ++ name) f)
-toRuby (New c p) = printf "%s.new%s" c params_
-  where params_ = if null p
-                    then ""
-                    else printf "(%s)" (join ", " $ map toRuby p)
+class ConvertToRuby a where
+    toRuby :: a -> String
 
-toRuby (Identifier str) = str
-toRuby (Embedded xs) = concat $ map toRuby xs
-toRuby (Function name_ args_ body_) = printf "def %s%s\n  %s\nend" name_ argsStr (toRuby body_)
-  where argsStr = if null args_
-                    then ""
-                    else "(" ++ (join ", " args_) ++ ")"
-toRuby (InfixCall left name_ right) = printf "%s(%s, %s)" name_ (toRuby left) (toRuby right)
-toRuby (Operator _ _) = ""
-toRuby (Enum choices) = join "\n" $ map makeEnum choices
-  where makeEnum c  = printf "%s = %s" c (symbolize c)
-        symbolize c = ":" ++ (toLower <$> c)
-toRuby x = show x
+instance ConvertToRuby Ruby where
+  toRuby (Class n f) = printf "%s = Struct.new(%s)" n params_
+    where params_ = if null f
+                      then "nil"
+                      else (join ", " $ map (\name -> ":" ++ name) f)
+  toRuby (New c p) = printf "%s.new%s" c params_
+    where params_ = if null p
+                      then ""
+                      else printf "(%s)" (join ", " $ map toRuby p)
+
+  toRuby (Identifier str) = str
+  toRuby (Embedded xs) = concat $ map toRuby xs
+  toRuby (Function name_ args_ body_) = printf "def %s%s\n  %s\nend" name_ argsStr (toRuby body_)
+    where argsStr = if null args_
+                      then ""
+                      else "(" ++ (join ", " args_) ++ ")"
+  toRuby (InfixCall left name_ right) = printf "%s(%s, %s)" name_ (toRuby left) (toRuby right)
+  toRuby (Operator _ _) = ""
+  toRuby (Enum choices) = join "\n" $ map makeEnum choices
+    where makeEnum c  = printf "%s = %s" c (symbolize c)
+          symbolize c = ":" ++ (toLower <$> c)
+  toRuby (Contract inp out) = printf "Contract %s => %s" (join ", " inp) out
+  toRuby x = show x
+
+data Extra = Contracts deriving (Show, Eq)
+
+instance ConvertToRuby Extra where
+    toRuby Contracts = "require 'rubygems'\nrequire 'contracts'\ninclude Contracts\n"
 
 data CodeState = CodeState {
                    _operators :: [Ruby],
                    _classes :: [Ruby],
-                   _code :: [Ruby]
+                   _code :: [Ruby],
+                   _headExtras :: [Extra]
 }
 
 makeLenses  ''CodeState
 
-defaultState = CodeState [] [] []
+defaultState = CodeState [] [] [] []
 
 type RubyParser = Stream s m Char => ParsecT s u m Ruby
 

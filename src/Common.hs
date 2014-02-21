@@ -10,6 +10,7 @@ module Common (
 ,module Data.Maybe
 ,module System.Directory
 ,module Data.Char
+,module Data.Monoid
 ) where
 
 import Text.Parsec hiding (State, uncons)
@@ -23,3 +24,4 @@ import Control.Lens
 import Data.Maybe
 import System.Directory
 import Data.Char
+import Data.Monoid
