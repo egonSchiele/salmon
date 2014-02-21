@@ -3,7 +3,21 @@
 A transpiler to Ruby that adds some nice syntax.
 Some features are only compatible with Ruby 1.9+.
 
-Current status: not usable yet. Pull requests welcome!
+Current status: not stable yet. Pull requests welcome!
+
+Here's a program that you can run using Salmon right now:
+
+```salmon
+data Person name age
+
+addAges p1 p2 = p1.age + p2.age
+op <+> addAges
+
+adit = Person "adit" 27
+maggie = Person "maggie" 28
+
+p adit <+> maggie
+```
 
 ## Spec
 
