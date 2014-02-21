@@ -28,10 +28,12 @@ classParser = do
 -- | Parses something like `Just "val"`
 newParser :: RubyParser
 newParser = do
+    string "new"
+    spaces
     firstLetter <- upper
     name_ <- many1 alphaNum
     char ' '
-    params_ <- (many1 $ noneOf " ") `sepBy` space
+    params_ <- (many1 $ noneOf " ") `sepBy1` space
     let className_ = firstLetter:name_
     return $ New className_ (map Unresolved params_)
 

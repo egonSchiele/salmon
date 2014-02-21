@@ -29,9 +29,9 @@ parseRuby (Unresolved line) = do
                 parseRuby result
 
 -- debugging
-parseRuby i@(Identifier line) = do
-    liftIO $ print i
-    return i
+-- parseRuby i@(Identifier line) = do
+--     liftIO $ print i
+--     return i
 
 parseRuby (New c params_) = do
   if hasUnresolved params_
