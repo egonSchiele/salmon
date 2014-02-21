@@ -3,6 +3,7 @@ import Types
 import Utils
 import Parsers
 
+maybeModifyState o@(Operator op name_) = modify $ over operators (o:)
 maybeModifyState x = return ()
 
 hasUnresolved [] = False
@@ -12,17 +13,15 @@ hasUnresolved (x:xs) = hasUnresolved xs
 isUnresolved (Unresolved _) = True
 isUnresolved _ = False
 
--- parseRuby :: Ruby -> StateT CodeState IO Ruby
--- parseRuby (Unresolved line) = do
---   case parse (functionParser <||> idParser) "" line of
---       Left err -> error (show err)
---       Right result -> do
---                 maybeModifyState result
---                 parseRuby result
-
+-- | This is what computes the AST. The main method is the one that parses
+-- `Unresolved` objects. There are others which will take an existing Ruby
+-- object, and check if any parts of it are unresolved. If so, it feeds
+-- them back into `parseRuby`.
 parseRuby :: Ruby -> StateT CodeState IO Ruby
 parseRuby (Unresolved line) = do
-  case parse (classParser <||> functionParser <||> embeddedParser <||> idParser) "" line of
+  state <- get
+  let ops = state ^. operators
+  case parse (classParser <||> functionParser <||> operatorParser <||> (embeddedParser ops) <||> idParser) "" line of
       Left err -> error (show err)
       Right result -> do
                 maybeModifyState result
@@ -59,7 +58,7 @@ convert :: String -> StateT CodeState IO ()
 convert filename = do
     contents <- liftIO $ lines <$> readFile filename
     rubyLines <- forM (map Unresolved contents) parseRuby
-    let newContents = toRuby <$> rubyLines
+    let newContents = toRuby <$> (concatRuby rubyLines)
 
     liftIO $ writeFile ("_" ++ filename) (join "\n" newContents)
 

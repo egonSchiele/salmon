@@ -30,6 +30,10 @@ data Ruby = Class {
                 infixFunctionName :: String,
                 rightArg :: Ruby
             }
+            | Operator {
+                operator :: String,
+                alphaName :: String
+            }
             deriving (Show)
 
 toRuby :: Ruby -> String
@@ -46,14 +50,29 @@ toRuby (Identifier str) = str
 toRuby (Embedded xs) = concat $ map toRuby xs
 toRuby (Function name_ args_ body_) = printf "def %s(%s)\n  %s\nend" name_ (join ", " args_) (toRuby body_)
 toRuby (InfixCall left name_ right) = printf "%s(%s, %s)" name_ (toRuby left) (toRuby right)
+toRuby (Operator _ _) = ""
 toRuby x = show x
 
 data CodeState = CodeState {
+                   _operators :: [Ruby],
                    _code :: [Ruby]
 }
 
 makeLenses  ''CodeState
 
-defaultState = CodeState []
+defaultState = CodeState [] []
 
 type RubyParser = Stream s m Char => ParsecT s u m Ruby
+
+findAlphaName op [] = Nothing
+findAlphaName op (x:xs) = if (operator x == op)
+                            then (Just $ alphaName x)
+                            else findAlphaName op xs
+
+-- | Easy way to remove Ruby objects that were for meta information only,
+-- and shouldn't be in the code. These objects (like `Operator` which
+-- defines new operators) add unnecessary blank lines to the code.
+concatRuby :: [Ruby] -> [Ruby]
+concatRuby [] = []
+concatRuby ((Operator _ _):xs) = concatRuby xs
+concatRuby (x:xs) = x:(concatRuby xs)

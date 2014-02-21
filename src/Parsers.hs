@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts, RankNTypes #-}
 
 module Parsers where
 
@@ -7,6 +7,7 @@ import Types
 import Utils
 import qualified Debug.Trace as D
 
+tryChoice parsers = choice $ map try parsers
 
 betweenSpaces :: Stream s m Char => ParsecT s u m a -> ParsecT s u m a
 betweenSpaces p = between spaces spaces p
@@ -38,12 +39,12 @@ idParser = do
     line <- option "" (many1 anyChar)
     return $ Identifier line
 
-embeddedParser :: RubyParser
-embeddedParser = do
-    let parsers = choice [newParser, infixCallParser]
-    front <- manyTill anyChar (try . lookAhead $ parsers )
+embeddedParser :: [Ruby] -> RubyParser
+embeddedParser ops = do
+    let parsers = tryChoice [newParser, infixCallParser, operatorUseParser ops]
+    front <- manyTill anyChar (try . lookAhead $ parsers)
     ruby <- parsers
-    rest <- embeddedParser <||> idParser
+    rest <- (embeddedParser ops) <||> idParser
     return $ Embedded [Identifier front, ruby, rest]
 
 functionParser :: RubyParser
@@ -61,3 +62,30 @@ infixCallParser = do
     char ' '
     right <- many1 anyChar
     return $ InfixCall (Unresolved left) name_ (Unresolved right)
+
+-- | You can define custom operators like this:
+--
+-- > op <+> add
+--
+-- Now you can use `2 <+> 3` instead of `add(2, 3)`.
+--
+-- This is what parses the `op <+> add` statement.
+operatorParser :: RubyParser
+operatorParser = do
+    string "op "
+    op <- manyTill anyChar (try $ char ' ')
+    alphaName_ <- many1 anyChar
+    return $ Operator op alphaName_
+
+-- gets passed in a bunch of custom defined operators, like <||> or
+-- whatever. Checks to see if its used anywhere, so it can get substituted
+-- with the correct alphaName
+-- TODO almost exactly like `infixCallParser`, refactor?
+operatorUseParser :: [Ruby] -> RubyParser
+operatorUseParser ops = do
+    let opNames = map operator ops
+    left <- manyTill digit (try $ char ' ')
+    opName <- choice (map string opNames)
+    char ' '
+    right <- many1 anyChar
+    return $ InfixCall (Unresolved left) (fromJust $ findAlphaName opName ops) (Unresolved right)
