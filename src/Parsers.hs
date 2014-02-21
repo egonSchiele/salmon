@@ -5,6 +5,8 @@ module Parsers where
 import Common
 import Types
 import Utils
+import qualified Debug.Trace as D
+
 
 betweenSpaces :: Stream s m Char => ParsecT s u m a -> ParsecT s u m a
 betweenSpaces p = between spaces spaces p
@@ -46,9 +48,8 @@ embeddedParser = do
 
 functionParser :: RubyParser
 functionParser = do
-    name_ <- many1 alphaNum
-    char ' '
-    args_ <- (many1 anyChar) `sepBy` space
-    string " = "
+    name_ <- manyTill alphaNum (char ' ')
+    args_ <- ((many1 alphaNum) `endBy` space)
+    string "= "
     body_ <- many1 anyChar
     return $ Function name_ args_ (Unresolved body_)

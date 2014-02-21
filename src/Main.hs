@@ -9,13 +9,26 @@ hasUnresolved [] = False
 hasUnresolved ((Unresolved _):xs) = True
 hasUnresolved (x:xs) = hasUnresolved xs
 
+-- parseRuby :: Ruby -> StateT CodeState IO Ruby
+-- parseRuby (Unresolved line) = do
+--   case parse (functionParser <||> idParser) "" line of
+--       Left err -> error (show err)
+--       Right result -> do
+--                 maybeModifyState result
+--                 parseRuby result
+
 parseRuby :: Ruby -> StateT CodeState IO Ruby
 parseRuby (Unresolved line) = do
-  case parse (classParser <||> functionParser <||> embeddedParser) "" line of
+  case parse (classParser <||> functionParser <||> embeddedParser <||> idParser) "" line of
       Left err -> error (show err)
       Right result -> do
                 maybeModifyState result
                 parseRuby result
+
+-- debugging
+parseRuby i@(Identifier line) = do
+    liftIO $ print i
+    return i
 
 parseRuby (New c params_) = do
   if hasUnresolved params_
