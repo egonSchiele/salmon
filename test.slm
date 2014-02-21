@@ -1,9 +1,10 @@
-data Just val
-p Just "hello"
+data Person name age
 
-add a b = a + b
+addAges p1 p2 = p1.age + p2.age
 
-p 2 `add` 5
+op <+> addAges
 
-op <|> add
-p 2 <|> 5 <|> 3
+adit = Person "adit" 27
+maggie = Person "maggie" 28
+
+adit <+> maggie

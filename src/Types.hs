@@ -40,11 +40,11 @@ toRuby :: Ruby -> String
 toRuby (Class n f) = printf "%s = Struct.new(%s)" n params_
   where params_ = if null f
                     then "nil"
-                    else (join "," $ map (\name -> ":" ++ name) f)
+                    else (join ", " $ map (\name -> ":" ++ name) f)
 toRuby (New c p) = printf "%s.new%s" c params_
   where params_ = if null p
                     then ""
-                    else printf "(%s)" (join "," $ map toRuby p)
+                    else printf "(%s)" (join ", " $ map toRuby p)
 
 toRuby (Identifier str) = str
 toRuby (Embedded xs) = concat $ map toRuby xs

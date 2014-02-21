@@ -28,7 +28,7 @@ newParser = do
     firstLetter <- upper
     name_ <- many1 alphaNum
     char ' '
-    params_ <- (many1 anyChar) `sepBy` space
+    params_ <- (many1 $ noneOf " ") `sepBy` space
     let className_ = firstLetter:name_
     return $ New className_ (map Unresolved params_)
 
@@ -50,7 +50,7 @@ embeddedParser ops = do
 functionParser :: RubyParser
 functionParser = do
     name_ <- manyTill alphaNum (char ' ')
-    args_ <- ((many1 alphaNum) `endBy` space)
+    args_ <- ((many1 alphaNum) `endBy1` space)
     string "= "
     body_ <- many1 anyChar
     return $ Function name_ args_ (Unresolved body_)
@@ -84,7 +84,7 @@ operatorParser = do
 operatorUseParser :: [Ruby] -> RubyParser
 operatorUseParser ops = do
     let opNames = map operator ops
-    left <- manyTill digit (try $ char ' ')
+    left <- manyTill anyChar (try $ char ' ')
     opName <- choice (map string opNames)
     char ' '
     right <- many1 anyChar
