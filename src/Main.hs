@@ -56,16 +56,12 @@ parseRuby x = return x
 
 convert :: String -> StateT CodeState IO ()
 convert filename = do
-    let newFilename = dropEnd 4 filename ++ ".rb"
-    fileExists <- liftIO $ doesFileExist newFilename
-    if fileExists
-      then liftIO . putStrLn $ "Don't want to overwrite " ++ newFilename ++ ", please move it."
-      else do
-        contents <- liftIO $ lines <$> readFile filename
-        rubyLines <- forM (map Unresolved contents) parseRuby
-        let newContents = toRuby <$> (concatRuby rubyLines)
-      
-        liftIO $ writeFile (newFilename) (join "\n" newContents)
+    contents <- liftIO $ lines <$> readFile filename
+    rubyLines <- forM (map Unresolved contents) parseRuby
+    let newContents = toRuby <$> (concatRuby rubyLines)
+        newFilename = dropEnd 4 filename ++ ".rb"
+  
+    liftIO $ writeFile (newFilename) (join "\n" newContents)
 
 printHelp = do
     putStrLn "salmon adds some extra syntax to Ruby."
