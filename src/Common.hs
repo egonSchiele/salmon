@@ -8,6 +8,7 @@ module Common (
 ,module Control.Monad.State
 ,module Control.Lens
 ,module Data.Maybe
+,module System.Directory
 ) where
 
 import Text.Parsec hiding (State, uncons)
@@ -19,3 +20,4 @@ import Control.Monad hiding (join)
 import Control.Monad.State hiding (join)
 import Control.Lens
 import Data.Maybe
+import System.Directory
