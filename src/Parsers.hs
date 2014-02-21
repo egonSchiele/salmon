@@ -40,7 +40,7 @@ idParser = do
 
 embeddedParser :: RubyParser
 embeddedParser = do
-    let parsers = choice [newParser]
+    let parsers = choice [newParser, infixCallParser]
     front <- manyTill anyChar (try . lookAhead $ parsers )
     ruby <- parsers
     rest <- embeddedParser <||> idParser
@@ -53,3 +53,11 @@ functionParser = do
     string "= "
     body_ <- many1 anyChar
     return $ Function name_ args_ (Unresolved body_)
+
+infixCallParser :: RubyParser
+infixCallParser = do
+    left <- manyTill anyChar (try $ char ' ')
+    name_ <- between (char '`') (char '`') (many1 alphaNum)
+    char ' '
+    right <- many1 anyChar
+    return $ InfixCall (Unresolved left) name_ (Unresolved right)

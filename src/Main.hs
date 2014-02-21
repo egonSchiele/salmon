@@ -9,6 +9,9 @@ hasUnresolved [] = False
 hasUnresolved ((Unresolved _):xs) = True
 hasUnresolved (x:xs) = hasUnresolved xs
 
+isUnresolved (Unresolved _) = True
+isUnresolved _ = False
+
 -- parseRuby :: Ruby -> StateT CodeState IO Ruby
 -- parseRuby (Unresolved line) = do
 --   case parse (functionParser <||> idParser) "" line of
@@ -44,6 +47,11 @@ parseRuby (Embedded xs) = do
 parseRuby (Function n a b@(Unresolved _)) = do
     newBody <- parseRuby b
     return $ Function n a newBody
+
+parseRuby (InfixCall left name_ right) = do
+    newLeft <- parseRuby left
+    newRight <- parseRuby right
+    return $ InfixCall newLeft name_ newRight
 
 parseRuby x = return x
 

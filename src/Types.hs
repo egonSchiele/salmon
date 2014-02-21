@@ -25,6 +25,11 @@ data Ruby = Class {
                 args :: [String],
                 body :: Ruby
               }
+            | InfixCall {
+                leftArg :: Ruby,
+                infixFunctionName :: String,
+                rightArg :: Ruby
+            }
             deriving (Show)
 
 toRuby :: Ruby -> String
@@ -40,6 +45,7 @@ toRuby (New c p) = printf "%s.new%s" c params_
 toRuby (Identifier str) = str
 toRuby (Embedded xs) = concat $ map toRuby xs
 toRuby (Function name_ args_ body_) = printf "def %s(%s)\n  %s\nend" name_ (join ", " args_) (toRuby body_)
+toRuby (InfixCall left name_ right) = printf "%s(%s, %s)" name_ (toRuby left) (toRuby right)
 toRuby x = show x
 
 data CodeState = CodeState {
