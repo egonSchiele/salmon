@@ -62,12 +62,13 @@ toRuby x = show x
 
 data CodeState = CodeState {
                    _operators :: [Ruby],
+                   _classes :: [Ruby],
                    _code :: [Ruby]
 }
 
 makeLenses  ''CodeState
 
-defaultState = CodeState [] []
+defaultState = CodeState [] [] []
 
 type RubyParser = Stream s m Char => ParsecT s u m Ruby
 

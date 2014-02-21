@@ -13,8 +13,8 @@ data Person name age
 addAges p1 p2 := p1.age + p2.age
 op <+> addAges
 
-adit   = new Person "adit" 27
-maggie = new Person "maggie" 28
+adit   = Person "adit" 27
+maggie = Person "maggie" 28
 
 p adit <+> maggie
 ```

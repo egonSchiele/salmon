@@ -7,8 +7,8 @@ say_hello := p "hello world"
 
 op <+> addAges
 
-adit   = new Person "adit" 27
-maggie = new Person "maggie" 28
+adit   = Person "adit" 27
+maggie = Person "maggie" 28
 
 enum RED | GREEN | BLUE
 

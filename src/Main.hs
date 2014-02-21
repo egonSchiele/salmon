@@ -3,7 +3,8 @@ import Types
 import Utils
 import Parsers
 
-maybeModifyState o@(Operator op name_) = modify $ over operators (o:)
+maybeModifyState o@(Operator _ _) = modify $ over operators (o:)
+maybeModifyState c@(Class _ _) = modify $ over classes (c:)
 maybeModifyState x = return ()
 
 hasUnresolved [] = False
@@ -20,8 +21,7 @@ isUnresolved _ = False
 parseRuby :: Ruby -> StateT CodeState IO Ruby
 parseRuby (Unresolved line) = do
   state <- get
-  let ops = state ^. operators
-  case parse (classParser <||> functionParser <||> operatorParser <||> enumParser <||> (embeddedParser ops) <||> idParser) "" line of
+  case parse (classParser <||> functionParser <||> operatorParser <||> enumParser <||> (embeddedParser state) <||> idParser) "" line of
       Left err -> error (show err)
       Right result -> do
                 maybeModifyState result

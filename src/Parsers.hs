@@ -26,15 +26,12 @@ classParser = do
     return $ Class name_ fields_
 
 -- | Parses something like `Just "val"`
-newParser :: RubyParser
-newParser = do
-    string "new"
-    spaces
-    firstLetter <- upper
-    name_ <- many1 alphaNum
+newParser :: [Ruby] -> RubyParser
+newParser cls = do
+    let classNames = map name cls
+    className_ <- choice (map string classNames)
     char ' '
-    params_ <- (many1 $ noneOf " ") `sepBy1` space
-    let className_ = firstLetter:name_
+    params_ <- (many1 $ noneOf " =,") `sepBy1` space
     return $ New className_ (map Unresolved params_)
 
 -- | assumes that this section contains only pure ruby.
@@ -44,12 +41,14 @@ idParser = do
     line <- option "" (many1 anyChar)
     return $ Identifier line
 
-embeddedParser :: [Ruby] -> RubyParser
-embeddedParser ops = do
-    let parsers = tryChoice [newParser, infixCallParser, operatorUseParser ops]
+embeddedParser :: CodeState -> RubyParser
+embeddedParser state = do
+    let ops = state ^. operators
+        cls = state ^. classes
+        parsers = tryChoice [newParser cls, infixCallParser, operatorUseParser ops]
     front <- manyTill anyChar (try . lookAhead $ parsers)
     ruby <- parsers
-    rest <- (embeddedParser ops) <||> idParser
+    rest <- (embeddedParser state) <||> idParser
     return $ Embedded [Identifier front, ruby, rest]
 
 functionParser :: RubyParser
