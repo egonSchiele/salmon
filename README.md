@@ -7,7 +7,7 @@ Current status: not usable yet. Pull requests welcome!
 
 ## Spec
 
-### Simple classes
+### Simple classes - DONE
 
 ```ruby
 data Just val
@@ -26,7 +26,7 @@ class Just
 end
 ```
 
-### Single-line functions
+### Single-line functions - DONE
 
 ```
 add a b = a + b
@@ -131,8 +131,9 @@ But we want it to be a little more readable, so it gets written as a block inste
 
 ### Infix function names
 
+
 ```
-1 `add` 2
+1 `add` 2 # DONE
 ```
 
 becomes
@@ -155,32 +156,24 @@ def incr b
 end
 ```
 
-### Defining operators
+### Defining operators - DONE
 
 You can define your own operators. For example:
 
 ```
 op (<|>) either
-(<|>) a b = a.nil? ? b : a
+```
+
+Now
+
+```
+a <|> b
 ```
 
 becomes
 
 ```ruby
-def either(a, b)
-  a.nil? ? b : a
-```
-
-And then `either` will get substituted in correctly everywhere:
-
-```
-c = a <|> b
-```
-
-becomes
-
-```ruby
-c = either(a, b)
+either(a, b)
 ```
 
 ### fmap
