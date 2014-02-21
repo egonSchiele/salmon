@@ -1,9 +1,10 @@
-data Just val
-p Just "hello"
+Just = Struct.new(:val)
+p Just.new("hello")
 
-add a b = a + b
+def add(a, b)
+  a + b
+end
 
-p 2 `add` 5
+p add(2, 5)
 
-op <|> add
-2 <|> 5
+p add(2, add(5, 3))

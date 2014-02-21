@@ -28,9 +28,9 @@ parseRuby (Unresolved line) = do
                 parseRuby result
 
 -- debugging
-parseRuby i@(Identifier line) = do
-    liftIO $ print i
-    return i
+-- parseRuby i@(Identifier line) = do
+--     liftIO $ print i
+--     return i
 
 parseRuby (New c params_) = do
   if hasUnresolved params_
@@ -59,8 +59,9 @@ convert filename = do
     contents <- liftIO $ lines <$> readFile filename
     rubyLines <- forM (map Unresolved contents) parseRuby
     let newContents = toRuby <$> (concatRuby rubyLines)
-
-    liftIO $ writeFile ("_" ++ filename) (join "\n" newContents)
+        newFilename = dropEnd 4 filename ++ ".rb"
+  
+    liftIO $ writeFile (newFilename) (join "\n" newContents)
 
 printHelp = do
     putStrLn "salmon adds some extra syntax to Ruby."
@@ -72,5 +73,8 @@ main = do
     case args of
       ["-h"] -> printHelp
       ["--help"] -> printHelp
-      [filename] -> runStateT (convert filename) defaultState >> return ()
+      [filename] -> do
+        if (takeEnd 4 filename /= ".slm")
+          then putStrLn "Please give me a file with a .slm extension."
+          else runStateT (convert filename) defaultState >> return ()
       _ -> printHelp
