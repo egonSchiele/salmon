@@ -3,32 +3,40 @@ import Types
 import Utils
 import Parsers
 
-maybeModifyState [] = return ()
-maybeModifyState (con@(Constructor n f):xs) = do
-    modify $ over classes (con:)
-    maybeModifyState xs
-
-maybeModifyState [RunBlock] = modify $ set runBlock True
-maybeModifyState [EndRunBlock] = modify $ set runBlock False
 maybeModifyState x = return ()
 
-parseLine :: String -> StateT CodeState IO [RubyData]
-parseLine line = do
-  state <- get
-  let parsers_ = (dataParser <||> newParser <||> runBlockParser)
-      parsers = if (state ^. runBlock) then (runBlockStatement <||> parsers_) else parsers_
-  case parse parsers "" line of
-      Left err -> return $ [UnchangedLine line]
+hasUnresolved [] = False
+hasUnresolved ((Unresolved _):xs) = True
+hasUnresolved (x:xs) = hasUnresolved xs
+
+parseRuby :: Ruby -> StateT CodeState IO Ruby
+parseRuby (Unresolved line) = do
+  case parse (classParser <||> embeddedParser <||> idParser) "" line of
+      Left err -> error (show err)
       Right result -> do
                 maybeModifyState result
-                return result
+                parseRuby result
+
+parseRuby (New c params_) = do
+  if hasUnresolved params_
+    then do
+      newParams <- mapM parseRuby params_
+      return $ New c newParams
+    else return $ New c params_
+
+parseRuby (Embedded xs) = do
+    newXs <- mapM parseRuby xs
+    return $ Embedded newXs
+
+parseRuby x = return x
 
 convert :: String -> StateT CodeState IO ()
 convert filename = do
     contents <- liftIO $ lines <$> readFile filename
-    newContents <- forM contents parseLine
+    rubyLines <- forM (map Unresolved contents) parseRuby
+    let newContents = toRuby <$> rubyLines
 
-    liftIO $ writeFile ("_" ++ filename) (join "\n" $ map toRuby (concat newContents))
+    liftIO $ writeFile ("_" ++ filename) (join "\n" newContents)
 
 printHelp = do
     putStrLn "salmon adds some extra syntax to Ruby."
