@@ -243,3 +243,17 @@ becomes:
 ```ruby
 Maybe.new(file).map { |x| JSON.parse(File.read(File.basename(x))) }
 ```
+
+### Enums - DONE
+
+```
+enum RED | BLUE | GREEN
+```
+
+becomes
+
+```ruby
+RED = :red
+BLUE = :blue
+GREEN = :green
+```

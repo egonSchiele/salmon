@@ -92,3 +92,9 @@ operatorUseParser ops = do
     char ' '
     right <- many1 anyChar
     return $ InfixCall (Unresolved left) (fromJust $ findAlphaName opName ops) (Unresolved right)
+
+enumParser :: RubyParser
+enumParser = do
+    string "enum "
+    options <- ((many1 identifier) `sepBy1` (string " | "))
+    return $ Enum options

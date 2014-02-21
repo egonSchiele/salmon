@@ -21,7 +21,7 @@ parseRuby :: Ruby -> StateT CodeState IO Ruby
 parseRuby (Unresolved line) = do
   state <- get
   let ops = state ^. operators
-  case parse (classParser <||> functionParser <||> operatorParser <||> (embeddedParser ops) <||> idParser) "" line of
+  case parse (classParser <||> functionParser <||> operatorParser <||> enumParser <||> (embeddedParser ops) <||> idParser) "" line of
       Left err -> error (show err)
       Right result -> do
                 maybeModifyState result

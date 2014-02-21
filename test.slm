@@ -9,5 +9,7 @@ op <+> addAges
 adit = Person "adit" 27
 maggie = Person "maggie" 28
 
+enum RED | GREEN | BLUE
+
 p adit <+> maggie
 say_hello
