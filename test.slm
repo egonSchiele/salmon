@@ -1,10 +1,13 @@
 data Person name age
 
-addAges p1 p2 = p1.age + p2.age
+addAges p1 p2 := p1.age + p2.age
+
+say_hello := p "hello world"
 
 op <+> addAges
 
 adit = Person "adit" 27
 maggie = Person "maggie" 28
 
-adit <+> maggie
+p adit <+> maggie
+say_hello

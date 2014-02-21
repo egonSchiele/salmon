@@ -25,12 +25,13 @@ parseRuby (Unresolved line) = do
       Left err -> error (show err)
       Right result -> do
                 maybeModifyState result
+                -- liftIO $ print result
                 parseRuby result
 
 -- debugging
--- parseRuby i@(Identifier line) = do
---     liftIO $ print i
---     return i
+parseRuby i@(Identifier line) = do
+    liftIO $ print i
+    return i
 
 parseRuby (New c params_) = do
   if hasUnresolved params_

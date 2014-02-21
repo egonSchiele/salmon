@@ -1,5 +1,5 @@
 all:
-	cabal install && cp .hsenv/cabal/bin/salmon /usr/local/bin/adit/salmon && rm -f test.rb && salmon test.slm && less test.rb
+	cabal install && cp .hsenv/cabal/bin/salmon /usr/local/bin/adit/salmon && salmon test.slm && less test.rb
 repo:
 	new_bitbucket_repo salmon
 spec:

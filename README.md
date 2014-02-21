@@ -43,7 +43,8 @@ end
 ### Single-line functions - DONE
 
 ```
-add a b = a + b
+add a b := a + b
+say_hello := p "hello world"
 ```
 
 becomes
@@ -51,6 +52,10 @@ becomes
 ```ruby
 def add a, b
   a + b
+end
+
+def say_hello
+  p "hello world"
 end
 ```
 

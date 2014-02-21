@@ -48,7 +48,10 @@ toRuby (New c p) = printf "%s.new%s" c params_
 
 toRuby (Identifier str) = str
 toRuby (Embedded xs) = concat $ map toRuby xs
-toRuby (Function name_ args_ body_) = printf "def %s(%s)\n  %s\nend" name_ (join ", " args_) (toRuby body_)
+toRuby (Function name_ args_ body_) = printf "def %s%s\n  %s\nend" name_ argsStr (toRuby body_)
+  where argsStr = if null args_
+                    then ""
+                    else "(" ++ (join ", " args_) ++ ")"
 toRuby (InfixCall left name_ right) = printf "%s(%s, %s)" name_ (toRuby left) (toRuby right)
 toRuby (Operator _ _) = ""
 toRuby x = show x

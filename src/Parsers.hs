@@ -12,6 +12,9 @@ tryChoice parsers = choice $ map try parsers
 betweenSpaces :: Stream s m Char => ParsecT s u m a -> ParsecT s u m a
 betweenSpaces p = between spaces spaces p
 
+identifier :: Stream s m Char => ParsecT s u m Char
+identifier = alphaNum <|> (oneOf "-_")
+
 -- | Parses a constructor (like the `Just a` part of `data Maybe = Nothing | Just a`)
 classParser :: RubyParser
 classParser = do
@@ -49,9 +52,9 @@ embeddedParser ops = do
 
 functionParser :: RubyParser
 functionParser = do
-    name_ <- manyTill alphaNum (char ' ')
-    args_ <- ((many1 alphaNum) `endBy1` space)
-    string "= "
+    name_ <- manyTill identifier (char ' ')
+    args_ <- ((many1 identifier) `endBy` space)
+    string ":= "
     body_ <- many1 anyChar
     return $ Function name_ args_ (Unresolved body_)
 
