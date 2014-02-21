@@ -11,7 +11,7 @@ hasUnresolved (x:xs) = hasUnresolved xs
 
 parseRuby :: Ruby -> StateT CodeState IO Ruby
 parseRuby (Unresolved line) = do
-  case parse (classParser <||> embeddedParser <||> idParser) "" line of
+  case parse (classParser <||> functionParser <||> embeddedParser) "" line of
       Left err -> error (show err)
       Right result -> do
                 maybeModifyState result
@@ -27,6 +27,10 @@ parseRuby (New c params_) = do
 parseRuby (Embedded xs) = do
     newXs <- mapM parseRuby xs
     return $ Embedded newXs
+
+parseRuby (Function n a b@(Unresolved _)) = do
+    newBody <- parseRuby b
+    return $ Function n a newBody
 
 parseRuby x = return x
 

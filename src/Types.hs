@@ -19,7 +19,12 @@ data Ruby = Class {
             }
             | Unresolved String -- some code that hasn't been resolved into a final `Ruby` object yet
             | Identifier String -- like `(1..10)` from `(1..10).map()`. Just something that should be copied directly.
-            | Embedded [Ruby]
+            | Embedded [Ruby]   -- Useful things like `p Just "hello"`, where `p` is an `Identifier` but `Just "hello"` is a `New`.
+            | Function {
+                functionName :: String,
+                args :: [String],
+                body :: Ruby
+              }
             deriving (Show)
 
 toRuby :: Ruby -> String
@@ -34,6 +39,7 @@ toRuby (New c p) = printf "%s.new%s" c params_
 
 toRuby (Identifier str) = str
 toRuby (Embedded xs) = concat $ map toRuby xs
+toRuby (Function name_ args_ body_) = printf "def %s(%s)\n  %s\nend" name_ (join "," args_) (toRuby body_)
 toRuby x = show x
 
 data CodeState = CodeState {

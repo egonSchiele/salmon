@@ -43,3 +43,12 @@ embeddedParser = do
     ruby <- parsers
     rest <- embeddedParser <||> idParser
     return $ Embedded [Identifier front, ruby, rest]
+
+functionParser :: RubyParser
+functionParser = do
+    name_ <- many1 alphaNum
+    char ' '
+    args_ <- (many1 anyChar) `sepBy` space
+    string " = "
+    body_ <- many1 anyChar
+    return $ Function name_ args_ (Unresolved body_)
