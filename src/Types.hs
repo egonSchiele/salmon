@@ -4,6 +4,7 @@ module Types where
 
 import Utils
 import Common
+import qualified Debug.Trace as D
 
 data Ruby = Class {
               name :: String,
@@ -41,10 +42,13 @@ data Ruby = Class {
             }
             | CurriedFunction {
                 curriedFunctionName :: String,
-                setArgs :: [Ruby],
-                curriedArgs :: Int
+                curriedArgs :: [Ruby]
             }
-            deriving (Show)
+            deriving (Show, Eq)
+
+
+missingArgs :: Ruby -> [Ruby]
+missingArgs (CurriedFunction _ cfArgs) = filter (== (Identifier "_")) cfArgs
 
 class ConvertToRuby a where
     toRuby :: a -> String
@@ -66,16 +70,27 @@ instance ConvertToRuby Ruby where
   -- function needs to take more params to pass
   -- in to the curried function.
   toRuby (Function name_ args_ body_) = printf "def %s%s\n  %s\nend" name_ argsStr bodyStr
+          -- curryArgs = for every underscore (_) in this curried function,
+          -- choose a symbol for the arg. Make sure its not a symbol we
+          -- have used already
     where curryArgs = case body_ of 
-                        (CurriedFunction n getArgs_ count) -> take count ((map (\c -> [c]) ['a'..'z']) \\ args_)
+                        c@(CurriedFunction n cfArgs) -> take (length $ missingArgs c) ((map (\c -> [c]) ['a'..'z']) \\ args_)
                         _ -> []
           argsWithCurry = args_ ++ curryArgs
           argsStr = if null argsWithCurry
                       then ""
                       else "(" ++ (join ", " argsWithCurry) ++ ")"
           bodyStr = case body_ of
-                      (CurriedFunction cfName setArgs_ _) -> printf "%s(%s, %s)" cfName (join "," (map toRuby setArgs_)) (join "," curryArgs)
+                      (CurriedFunction cfName cfArgs) -> printf "%s(%s)" cfName (join ", " (map toRuby (blend cfArgs curryArgs)))
                       _ -> toRuby body_
+          -- blend the curried function's args and our made up args. So if
+          -- the curried function's arg is an underscore (_), then use
+          -- a made up arg. Else use the curried function's arg. This way,
+          -- I can do currying of any position.
+          blend xs ys = blend_ xs ys []
+          blend_ [] _ acc = acc
+          blend_ ((Identifier "_"):xs) (y:ys) acc = blend_ xs ys (acc ++ [Identifier y])
+          blend_ (x:xs) ys acc = blend_ xs ys (acc ++ [x])
 
   toRuby (InfixCall left name_ right) = printf "%s(%s, %s)" name_ (toRuby left) (toRuby right)
   toRuby (Operator _ _) = ""

@@ -9,3 +9,4 @@ join chr list = concat $ intersperse chr list
 
 takeEnd count list = reverse . take count $ reverse list
 dropEnd count list = reverse . drop count $ reverse list
+

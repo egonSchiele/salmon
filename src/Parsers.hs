@@ -137,8 +137,6 @@ curriedFunctionParser = do
     spaces
     args_ <- many1 (noneOf "=,)") `sepBy1` (string ", ")
     char ')'
-    let setArgs_ = Unresolved <$> filter ((/=) "_") args_
-        curriedArgs_ = length args_ - length setArgs_
     if ("_" `notElem` args_)
       then fail "Not a curried function, didn't find an underscore (_)"
-      else return $ CurriedFunction name_ setArgs_ curriedArgs_
+      else return $ CurriedFunction name_ (map Unresolved args_)

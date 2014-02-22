@@ -34,9 +34,9 @@ parseRuby (Unresolved line) = do
 --     liftIO $ print i
 --     return i
 
-parseRuby (CurriedFunction n setArgs_ c) = do
-    newSetArgs <- mapM parseRuby setArgs_
-    return $ CurriedFunction n newSetArgs c
+parseRuby (CurriedFunction n cfArgs) = do
+    newCfArgs <- mapM parseRuby cfArgs
+    return $ CurriedFunction n newCfArgs
 
 parseRuby (New c params_) = do
   if hasUnresolved params_
