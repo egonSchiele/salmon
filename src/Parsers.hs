@@ -135,7 +135,7 @@ curriedFunctionParser :: RubyParser
 curriedFunctionParser = do
     name_ <- manyTill identifier (oneOf "(")
     spaces
-    args_ <- many1 (noneOf "=,)") `sepBy1` (string ", ")
+    args_ <- many1 (noneOf "(=,)") `sepBy1` (string ", ")
     char ')'
     if ("_" `notElem` args_)
       then fail "Not a curried function, didn't find an underscore (_)"

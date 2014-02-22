@@ -50,6 +50,22 @@ data Ruby = Class {
 missingArgs :: Ruby -> [Ruby]
 missingArgs (CurriedFunction _ cfArgs) = filter (== (Identifier "_")) cfArgs
 
+-- placeholderArgsFor = for every underscore (_) in this curried function,
+-- choose a symbol for the arg. Make sure its not a symbol we have used already.
+-- Return all the chosen symbols.
+placeholderArgsFor :: Ruby -> [String] -> [String]
+placeholderArgsFor c@(CurriedFunction n cfArgs) args_ = take (length $ missingArgs c) ((map (\c -> [c]) ['a'..'z']) \\ args_)
+placeholderArgsFor _ _ = []
+
+-- blend the curried function's args and our made up args. So if
+-- the curried function's arg is an underscore (_), then use
+-- a made up arg. Else use the curried function's arg. This way,
+-- I can do currying of any position.
+blend xs ys = blend_ xs ys []
+blend_ [] _ acc = acc
+blend_ ((Identifier "_"):xs) (y:ys) acc = blend_ xs ys (acc ++ [Identifier y])
+blend_ (x:xs) ys acc = blend_ xs ys (acc ++ [x])
+
 class ConvertToRuby a where
     toRuby :: a -> String
 
@@ -70,12 +86,7 @@ instance ConvertToRuby Ruby where
   -- function needs to take more params to pass
   -- in to the curried function.
   toRuby (Function name_ args_ body_) = printf "def %s%s\n  %s\nend" name_ argsStr bodyStr
-          -- curryArgs = for every underscore (_) in this curried function,
-          -- choose a symbol for the arg. Make sure its not a symbol we
-          -- have used already
-    where curryArgs = case body_ of 
-                        c@(CurriedFunction n cfArgs) -> take (length $ missingArgs c) ((map (\c -> [c]) ['a'..'z']) \\ args_)
-                        _ -> []
+    where curryArgs = placeholderArgsFor body_ args_
           argsWithCurry = args_ ++ curryArgs
           argsStr = if null argsWithCurry
                       then ""
@@ -83,14 +94,6 @@ instance ConvertToRuby Ruby where
           bodyStr = case body_ of
                       (CurriedFunction cfName cfArgs) -> printf "%s(%s)" cfName (join ", " (map toRuby (blend cfArgs curryArgs)))
                       _ -> toRuby body_
-          -- blend the curried function's args and our made up args. So if
-          -- the curried function's arg is an underscore (_), then use
-          -- a made up arg. Else use the curried function's arg. This way,
-          -- I can do currying of any position.
-          blend xs ys = blend_ xs ys []
-          blend_ [] _ acc = acc
-          blend_ ((Identifier "_"):xs) (y:ys) acc = blend_ xs ys (acc ++ [Identifier y])
-          blend_ (x:xs) ys acc = blend_ xs ys (acc ++ [x])
 
   toRuby (InfixCall left name_ right) = printf "%s(%s, %s)" name_ (toRuby left) (toRuby right)
   toRuby (Operator _ _) = ""
@@ -98,6 +101,9 @@ instance ConvertToRuby Ruby where
     where makeEnum c  = printf "%s = %s" c (symbolize c)
           symbolize c = ":" ++ (toLower <$> c)
   toRuby (Contract inp out) = printf "Contract %s => %s" (join ", " inp) out
+  toRuby c@(CurriedFunction cfName cfArgs) = printf "(->(%s) { %s(%s) })" (join "," curryArgs) cfName (join ", " (map toRuby (blend cfArgs curryArgs)))
+    where curryArgs = placeholderArgsFor c []
+
   toRuby x = show x
 
 data Extra = Contracts deriving (Show, Eq)

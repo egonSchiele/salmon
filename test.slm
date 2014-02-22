@@ -19,6 +19,8 @@ say_hello
 
 add a b := a + b
 
-incr := add(1, _)
+incr := add(_, 1, _)
 
 p incr(2)
+
+(1..10).map(add(1, _))
