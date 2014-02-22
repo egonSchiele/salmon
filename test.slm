@@ -17,4 +17,8 @@ enum RED | GREEN | BLUE
 p adit <+> maggie
 say_hello
 
+add a b := a + b
+
 incr := add(1, _)
+
+p incr(2)
