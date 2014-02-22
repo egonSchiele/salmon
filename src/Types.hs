@@ -44,6 +44,7 @@ data Ruby = Class {
                 curriedFunctionName :: String,
                 curriedArgs :: [Ruby]
             }
+            | BlockCurriedFunction Ruby -- special case...if a curried function is passed in as a block, render it differently.
             deriving (Show, Eq)
 
 
@@ -104,6 +105,9 @@ instance ConvertToRuby Ruby where
   toRuby c@(CurriedFunction cfName cfArgs) = printf "(->(%s) { %s(%s) })" (join "," curryArgs) cfName (join ", " (map toRuby (blend cfArgs curryArgs)))
     where curryArgs = placeholderArgsFor c []
 
+  toRuby (BlockCurriedFunction c@(CurriedFunction cfName cfArgs)) = printf " do |%s|\n  %s(%s)\nend" (join "," curryArgs) cfName (join ", " (map toRuby (blend cfArgs curryArgs)))
+    where curryArgs = placeholderArgsFor c []
+    
   toRuby x = show x
 
 data Extra = Contracts deriving (Show, Eq)

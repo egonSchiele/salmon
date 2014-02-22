@@ -38,6 +38,10 @@ parseRuby (CurriedFunction n cfArgs) = do
     newCfArgs <- mapM parseRuby cfArgs
     return $ CurriedFunction n newCfArgs
 
+parseRuby (BlockCurriedFunction f) = do
+    newF <- parseRuby f
+    return $ BlockCurriedFunction newF
+
 parseRuby (New c params_) = do
   if hasUnresolved params_
     then do

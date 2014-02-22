@@ -45,7 +45,7 @@ embeddedParser :: CodeState -> RubyParser
 embeddedParser state = do
     let ops = state ^. operators
         cls = state ^. classes
-        parsers = tryChoice [stringParser, curriedFunctionParser, newParser cls, infixCallParser, operatorUseParser ops]
+        parsers = tryChoice [stringParser, blockCurriedFunctionParser, curriedFunctionParser, newParser cls, infixCallParser, operatorUseParser ops]
     front <- manyTill anyChar (try . lookAhead $ parsers)
     ruby <- parsers
     rest <- (embeddedParser state) <||> idParser
@@ -130,6 +130,13 @@ commentParser = do
     char '#'
     rest <- many1 anyChar
     return $ Identifier (leadingSpace ++ "#" ++ rest)
+
+blockCurriedFunctionParser :: RubyParser
+blockCurriedFunctionParser = do
+    string "(&"
+    curriedFunc <- curriedFunctionParser
+    string ")"
+    return $ BlockCurriedFunction curriedFunc
 
 curriedFunctionParser :: RubyParser
 curriedFunctionParser = do
