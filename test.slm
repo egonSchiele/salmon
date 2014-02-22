@@ -17,4 +17,4 @@ enum RED | GREEN | BLUE
 p adit <+> maggie
 say_hello
 
-hello = "do `this` now!"
+incr := add(1, _)

@@ -39,6 +39,11 @@ data Ruby = Class {
                 input :: [String],
                 output :: String
             }
+            | CurriedFunction {
+                curriedFunctionName :: String,
+                setArgs :: [Ruby],
+                curriedArgs :: Int
+            }
             deriving (Show)
 
 class ConvertToRuby a where
@@ -56,10 +61,22 @@ instance ConvertToRuby Ruby where
 
   toRuby (Identifier str) = str
   toRuby (Embedded xs) = concat $ map toRuby xs
-  toRuby (Function name_ args_ body_) = printf "def %s%s\n  %s\nend" name_ argsStr (toRuby body_)
-    where argsStr = if null args_
+
+  -- if the body is a curried function, this
+  -- function needs to take more params to pass
+  -- in to the curried function.
+  toRuby (Function name_ args_ body_) = printf "def %s%s\n  %s\nend" name_ argsStr bodyStr
+    where curryArgs = case body_ of 
+                        (CurriedFunction n getArgs_ count) -> take count ((map (\c -> [c]) ['a'..'z']) \\ args_)
+                        _ -> []
+          argsWithCurry = args_ ++ curryArgs
+          argsStr = if null argsWithCurry
                       then ""
-                      else "(" ++ (join ", " args_) ++ ")"
+                      else "(" ++ (join ", " argsWithCurry) ++ ")"
+          bodyStr = case body_ of
+                      (CurriedFunction cfName setArgs_ _) -> printf "%s(%s, %s)" cfName (join "," (map toRuby setArgs_)) (join "," curryArgs)
+                      _ -> toRuby body_
+
   toRuby (InfixCall left name_ right) = printf "%s(%s, %s)" name_ (toRuby left) (toRuby right)
   toRuby (Operator _ _) = ""
   toRuby (Enum choices) = join "\n" $ map makeEnum choices
@@ -98,3 +115,6 @@ concatRuby :: [Ruby] -> [Ruby]
 concatRuby [] = []
 concatRuby ((Operator _ _):xs) = concatRuby xs
 concatRuby (x:xs) = x:(concatRuby xs)
+
+blankIdentifier (Identifier "") = True
+blankIdentifier _ = False

@@ -26,13 +26,17 @@ parseRuby (Unresolved line) = do
       Left err -> error (show err)
       Right result -> do
                 maybeModifyState result
-                -- liftIO $ print result
+                liftIO $ print result
                 parseRuby result
 
 -- debugging
--- parseRuby i@(Identifier line) = do
---     liftIO $ print i
---     return i
+parseRuby i@(Identifier line) = do
+    liftIO $ print i
+    return i
+
+parseRuby (CurriedFunction n setArgs_ c) = do
+    newSetArgs <- mapM parseRuby setArgs_
+    return $ CurriedFunction n newSetArgs c
 
 parseRuby (New c params_) = do
   if hasUnresolved params_

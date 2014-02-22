@@ -45,11 +45,14 @@ embeddedParser :: CodeState -> RubyParser
 embeddedParser state = do
     let ops = state ^. operators
         cls = state ^. classes
-        parsers = tryChoice [stringParser, newParser cls, infixCallParser, operatorUseParser ops]
+        parsers = tryChoice [stringParser, curriedFunctionParser, newParser cls, infixCallParser, operatorUseParser ops]
     front <- manyTill anyChar (try . lookAhead $ parsers)
     ruby <- parsers
     rest <- (embeddedParser state) <||> idParser
-    return $ Embedded [Identifier front, ruby, rest]
+    let rubies = filter (not . blankIdentifier) [Identifier front, ruby, rest]
+    if length rubies == 1
+      then return $ head rubies
+      else return $ Embedded rubies
 
 stringParser :: RubyParser
 stringParser = singleQuoteStringParser <||> doubleQuoteStringParser
@@ -127,3 +130,15 @@ commentParser = do
     char '#'
     rest <- many1 anyChar
     return $ Identifier (leadingSpace ++ "#" ++ rest)
+
+curriedFunctionParser :: RubyParser
+curriedFunctionParser = do
+    name_ <- manyTill identifier (oneOf "(")
+    spaces
+    args_ <- many1 (noneOf "=,)") `sepBy1` (string ", ")
+    char ')'
+    let setArgs_ = Unresolved <$> filter ((/=) "_") args_
+        curriedArgs_ = length args_ - length setArgs_
+    if ("_" `notElem` args_)
+      then fail "Not a curried function, didn't find an underscore (_)"
+      else return $ CurriedFunction name_ setArgs_ curriedArgs_
