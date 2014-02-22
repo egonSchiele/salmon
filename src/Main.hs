@@ -22,11 +22,11 @@ isUnresolved _ = False
 parseRuby :: Ruby -> StateT CodeState IO Ruby
 parseRuby (Unresolved line) = do
   state <- get
-  case parse (classParser <||> functionParser <||> operatorParser <||> enumParser <||> contractParser <||> (embeddedParser state) <||> idParser) "" line of
+  case parse (commentParser <||> classParser <||> functionParser <||> operatorParser <||> enumParser <||> contractParser <||> (embeddedParser state) <||> idParser) "" line of
       Left err -> error (show err)
       Right result -> do
                 maybeModifyState result
-                --liftIO $ print result
+                -- liftIO $ print result
                 parseRuby result
 
 -- debugging

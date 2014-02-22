@@ -1,5 +1,7 @@
 data Person name age
 
+# hello `there` ok
+
 addAges :: Person -> Person -> Num
 addAges p1 p2 := p1.age + p2.age
 
@@ -14,3 +16,5 @@ enum RED | GREEN | BLUE
 
 p adit <+> maggie
 say_hello
+
+hello = "do `this` now!"

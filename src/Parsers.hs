@@ -45,11 +45,26 @@ embeddedParser :: CodeState -> RubyParser
 embeddedParser state = do
     let ops = state ^. operators
         cls = state ^. classes
-        parsers = tryChoice [newParser cls, infixCallParser, operatorUseParser ops]
+        parsers = tryChoice [stringParser, newParser cls, infixCallParser, operatorUseParser ops]
     front <- manyTill anyChar (try . lookAhead $ parsers)
     ruby <- parsers
     rest <- (embeddedParser state) <||> idParser
     return $ Embedded [Identifier front, ruby, rest]
+
+stringParser :: RubyParser
+stringParser = singleQuoteStringParser <||> doubleQuoteStringParser
+
+singleQuoteStringParser :: RubyParser
+singleQuoteStringParser = do
+    char '\''
+    string <- manyTill anyChar (char '\'')
+    return $ Identifier ("'" ++ string ++ "'")
+
+doubleQuoteStringParser :: RubyParser
+doubleQuoteStringParser = do
+    char '"'
+    string <- manyTill anyChar (char '"')
+    return $ Identifier ("\"" ++ string ++ "\"")
 
 functionParser :: RubyParser
 functionParser = do
@@ -105,3 +120,10 @@ contractParser = do
     manyTill identifier (try $ string " :: ")
     params <- ((many1 $ noneOf " ") `sepBy1` (string " -> "))
     return $ Contract (init params) (last params)
+
+commentParser :: RubyParser
+commentParser = do
+    leadingSpace <- option "" (many1 space)
+    char '#'
+    rest <- many1 anyChar
+    return $ Identifier (leadingSpace ++ "#" ++ rest)
