@@ -108,7 +108,7 @@ filenames.map(&(JSON.parse . File.read . File.basename))
 
 ??
 
-### Currying
+### Currying - DONE
 
 ```
 incr = add(1, _)
@@ -117,26 +117,10 @@ incr = add(1, _)
 becomes
 
 ```ruby
-def incr b
-  add(1, b)
+def incr a
+  add(1, a)
 end
 ```
-
-But anonymous functions are lambdas depending on the context:
-
-```
-add(1, _) $ 12
-```
-
-becomes
-
-```
-(->(b) { add(1, b) })[12]
-```
-
-Or you could also do:
-
-(1+_) $ 12
 
 Or:
 
@@ -144,43 +128,25 @@ Or:
 (1..10).map(&add(1, _))
 ```
 
-would work as a lambda:
+becomes:
 
 ```ruby
-(1..10).map(&(->(b) { add(1, b) }))
+(1..10).map do |a|
+  add(1, a)
+end
 ```
 
-But we want it to be a little more readable, so it gets written as a block instead:
-
-```ruby
-(1..10).map { |b| add(1, b) }
-```
-
-### Infix function names
+### Infix function names - DONE
 
 
 ```
-1 `add` 2 # DONE
+1 `add` 2
 ```
 
 becomes
 
 ```ruby
 add(1, 2)
-```
-
-And you can curry like this too:
-
-```
-incr = 1 `add` _
-```
-
-becomes
-
-```ruby
-def incr b
-  add(1, b)
-end
 ```
 
 ### Defining operators - DONE

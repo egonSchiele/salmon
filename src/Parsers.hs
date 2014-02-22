@@ -45,7 +45,7 @@ embeddedParser :: CodeState -> RubyParser
 embeddedParser state = do
     let ops = state ^. operators
         cls = state ^. classes
-        parsers = tryChoice [stringParser, blockCurriedFunctionParser, curriedFunctionParser, newParser cls, infixCallParser, operatorUseParser ops]
+        parsers = tryChoice [stringParser, fmapParser, blockCurriedFunctionParser, curriedFunctionParser, newParser cls, infixCallParser, operatorUseParser ops]
     front <- manyTill anyChar (try . lookAhead $ parsers)
     ruby <- parsers
     rest <- (embeddedParser state) <||> idParser
@@ -133,9 +133,9 @@ commentParser = do
 
 blockCurriedFunctionParser :: RubyParser
 blockCurriedFunctionParser = do
-    string "(&"
+    string "(" >> spaces >> string "&"
     curriedFunc <- curriedFunctionParser
-    string ")"
+    spaces >> string ")"
     return $ BlockCurriedFunction curriedFunc
 
 curriedFunctionParser :: RubyParser
@@ -147,3 +147,10 @@ curriedFunctionParser = do
     if ("_" `notElem` args_)
       then fail "Not a curried function, didn't find an underscore (_)"
       else return $ CurriedFunction name_ (map Unresolved args_)
+
+fmapParser :: RubyParser
+fmapParser = do
+    function <- manyTill (noneOf "<") (string "<$> ")
+    item <- many1 anyChar
+    let str = printf "%s.map(&%s)" item function
+    return $ Unresolved str
