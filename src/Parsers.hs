@@ -13,7 +13,7 @@ betweenSpaces :: Stream s m Char => ParsecT s u m a -> ParsecT s u m a
 betweenSpaces p = between spaces spaces p
 
 identifier :: Stream s m Char => ParsecT s u m Char
-identifier = alphaNum <|> (oneOf "-_")
+identifier = alphaNum <|> (oneOf "-_.&?!")
 
 -- | Parses a constructor (like the `Just a` part of `data Maybe = Nothing | Just a`)
 classParser :: RubyParser
@@ -45,7 +45,7 @@ embeddedParser :: CodeState -> RubyParser
 embeddedParser state = do
     let ops = state ^. operators
         cls = state ^. classes
-        parsers = tryChoice [stringParser, fmapParser, blockCurriedFunctionParser, curriedFunctionParser, newParser cls, infixCallParser, operatorUseParser ops]
+        parsers = tryChoice [stringParser, fmapParser, blockCurriedFunctionParser, curriedFunctionParser, compositionParser, newParser cls, infixCallParser, operatorUseParser ops]
     front <- manyTill anyChar (try . lookAhead $ parsers)
     ruby <- parsers
     rest <- (embeddedParser state) <||> idParser
@@ -179,3 +179,16 @@ fmapParser = do
     item <- many1 anyChar
     let str = printf "%s.map(&%s)" item function
     return $ Unresolved str
+
+-- add a b := a + b
+
+-- def add(a, b)
+--   a + Composition {functionNames = ["b"], argument = Nothing}
+-- end
+
+compositionParser :: RubyParser
+compositionParser = do
+    names <- many1 identifier `sepBy1` (string " . ")
+    if length names < 2
+      then fail "Not a composition since there's only one function!!"
+      else return $ Composition names Nothing

@@ -48,18 +48,30 @@ data Ruby = Class {
                 curriedArgs :: [Ruby]
             }
             | BlockCurriedFunction Ruby -- special case...if a curried function is passed in as a block, render it differently.
+            | Composition {
+                functionNames :: [String],
+                argument :: Maybe Ruby
+            }
             deriving (Show, Eq)
 
 
 missingArgs :: Ruby -> [Ruby]
 missingArgs (CurriedFunction _ cfArgs) = filter (== (Identifier "_")) cfArgs
 
+-- all the letters of the alphabet, as strings instead of chars.
+alphabets :: [String]
+alphabets = (map (\c -> [c]) ['a'..'z'])
+
 -- placeholderArgsFor = for every underscore (_) in this curried function,
 -- choose a symbol for the arg. Make sure its not a symbol we have used already.
 -- Return all the chosen symbols.
 placeholderArgsFor :: Ruby -> [String] -> [String]
-placeholderArgsFor c@(CurriedFunction n cfArgs) args_ = take (length $ missingArgs c) ((map (\c -> [c]) ['a'..'z']) \\ args_)
+placeholderArgsFor c@(CurriedFunction n cfArgs) args_ = take (length $ missingArgs c) (alphabets \\ args_)
+placeholderArgsFor c@(Composition _ Nothing) args_ = take 1 (alphabets \\ args_)
 placeholderArgsFor _ _ = []
+
+makeCompositionString [] arg = toRuby arg
+makeCompositionString (f:funcs) arg = printf "%s(%s)" f (makeCompositionString funcs arg)
 
 -- blend the curried function's args and our made up args. So if
 -- the curried function's arg is an underscore (_), then use
@@ -90,13 +102,18 @@ instance ConvertToRuby Ruby where
   -- function needs to take more params to pass
   -- in to the curried function.
   toRuby (Function name_ args_ body_) = printf "def %s%s\n  %s\nend" name_ argsStr bodyStr
-    where curryArgs = placeholderArgsFor body_ args_
-          argsWithCurry = args_ ++ curryArgs
-          argsStr = if null argsWithCurry
+    -- placeholderArgsFor will make args for currying, OR args for function
+    -- composition. None of the functions in the function composition can
+    -- be curried, so don't need to worry about that!
+    where extraArgs = placeholderArgsFor body_ args_
+          allArgs = args_ ++ extraArgs
+          argsStr = if null allArgs
                       then ""
-                      else "(" ++ (join ", " argsWithCurry) ++ ")"
+                      else "(" ++ (join ", " allArgs) ++ ")"
           bodyStr = case body_ of
-                      (CurriedFunction cfName cfArgs) -> printf "%s(%s)" cfName (join ", " (map toRuby (blend cfArgs curryArgs)))
+                      (CurriedFunction cfName cfArgs) -> printf "%s(%s)" cfName (join ", " (map toRuby (blend cfArgs extraArgs)))
+                      (Composition funcs (Just arg)) -> makeCompositionString funcs arg
+                      (Composition funcs Nothing)    -> makeCompositionString funcs (Identifier . head $ extraArgs)
                       _ -> toRuby body_
 
   toRuby (InfixCall left name_ right) = printf "%s(%s, %s)" name_ (toRuby left) (toRuby right)
