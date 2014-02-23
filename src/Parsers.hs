@@ -13,7 +13,7 @@ betweenSpaces :: Stream s m Char => ParsecT s u m a -> ParsecT s u m a
 betweenSpaces p = between spaces spaces p
 
 identifier :: Stream s m Char => ParsecT s u m Char
-identifier = alphaNum <|> (oneOf "-_.&?!")
+identifier = alphaNum <|> (oneOf "-_&?!.")
 
 -- | Parses a constructor (like the `Just a` part of `data Maybe = Nothing | Just a`)
 classParser :: RubyParser
@@ -45,10 +45,13 @@ embeddedParser :: CodeState -> RubyParser
 embeddedParser state = do
     let ops = state ^. operators
         cls = state ^. classes
-        parsers = tryChoice [stringParser, fmapParser, blockCurriedFunctionParser, curriedFunctionParser, compositionParser, newParser cls, infixCallParser, operatorUseParser ops]
+        parsers = tryChoice [stringParser, fmapParser, blockFunctionParser, compositionParser, curriedFunctionParser, newParser cls, infixCallParser, operatorUseParser ops]
     front <- manyTill anyChar (try . lookAhead $ parsers)
+    D.trace ("front: " ++ (show front)) (return ())
     ruby <- parsers
+    D.trace ("ruby: " ++ (show ruby)) (return ())
     rest <- (embeddedParser state) <||> idParser
+    D.trace ("rest: " ++ (show rest)) (return ())
     let rubies = filter (not . blankIdentifier) [Identifier front, ruby, rest]
     if length rubies == 1
       then return $ head rubies
@@ -131,12 +134,13 @@ commentParser = do
     rest <- many1 anyChar
     return $ Identifier (leadingSpace ++ "#" ++ rest)
 
-blockCurriedFunctionParser :: RubyParser
-blockCurriedFunctionParser = do
+blockFunctionParser :: RubyParser
+blockFunctionParser = do
     oneOf "( " >> spaces >> string "&"
-    curriedFunc <- curriedFunctionParser <||> curriedFunctionSingleArgParser
-    spaces >> (optional $ string ")")
-    return $ BlockCurriedFunction curriedFunc
+    optional $ string "("
+    curriedFunc <- compositionParser <||> curriedFunctionParser <||> curriedFunctionSingleArgParser
+    spaces >> (optional $ string ")") >> (optional $ string ")")
+    return $ BlockFunction curriedFunc
 
 curriedFunctionParser :: RubyParser
 curriedFunctionParser = do

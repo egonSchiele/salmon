@@ -10,10 +10,6 @@ data Ruby = Class {
               name :: String,
               fields :: [String]
             }
-            | Fmap {
-              item :: Ruby,
-              block :: Ruby
-            }
             | New {
               className :: String,
               params :: [Ruby]
@@ -47,7 +43,7 @@ data Ruby = Class {
                 curriedFunctionName :: String,
                 curriedArgs :: [Ruby]
             }
-            | BlockCurriedFunction Ruby -- special case...if a curried function is passed in as a block, render it differently.
+            | BlockFunction Ruby -- special case...if a curried function or a composed function is passed in as a block, render it differently.
             | Composition {
                 functionNames :: [String],
                 argument :: Maybe Ruby
@@ -124,7 +120,9 @@ instance ConvertToRuby Ruby where
   toRuby (Contract inp out) = printf "Contract %s => %s" (join ", " inp) out
   toRuby c@(CurriedFunction cfName cfArgs) = error $ "Curried functions can only be used as a block, or if you assign it a name by making it into a new function. You can't use curried functions in function composition etc. We don't make lambdas out of curried functions simply because it doesn't look like idiomatic Ruby. You're seeing this because you might have tried to make this curried function into a lambda: " ++ show c
 
-  toRuby (BlockCurriedFunction c@(CurriedFunction cfName cfArgs)) = printf " { |%s| %s(%s) }" (join "," curryArgs) cfName (join ", " (map toRuby (blend cfArgs curryArgs)))
+  toRuby (BlockFunction c@(Composition funcs Nothing)) = printf " { |a| %s }" (makeCompositionString funcs (Identifier "a"))
+  toRuby (BlockFunction c@(Composition funcs (Just arg))) = error $ "You provided a composed function to a block, but then gave it an argument! " ++ show c
+  toRuby (BlockFunction c@(CurriedFunction cfName cfArgs)) = printf " { |%s| %s(%s) }" (join "," curryArgs) cfName (join ", " (map toRuby (blend cfArgs curryArgs)))
     where curryArgs = placeholderArgsFor c []
     
   toRuby x = show x

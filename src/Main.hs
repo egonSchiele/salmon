@@ -26,21 +26,25 @@ parseRuby (Unresolved line) = do
       Left err -> error (show err)
       Right result -> do
                 maybeModifyState result
-                -- liftIO $ print result
+                liftIO $ print result
                 parseRuby result
 
 -- debugging
--- parseRuby i@(Identifier line) = do
---     liftIO $ print i
---     return i
+parseRuby i@(Identifier line) = do
+    liftIO $ print i
+    return i
 
 parseRuby (CurriedFunction n cfArgs) = do
     newCfArgs <- mapM parseRuby cfArgs
     return $ CurriedFunction n newCfArgs
 
-parseRuby (BlockCurriedFunction f) = do
+parseRuby (Composition funcs (Just arg)) = do
+    newArg <- parseRuby arg
+    return $ Composition funcs (Just newArg)
+
+parseRuby (BlockFunction f) = do
     newF <- parseRuby f
-    return $ BlockCurriedFunction newF
+    return $ BlockFunction newF
 
 parseRuby (New c params_) = do
   if hasUnresolved params_
