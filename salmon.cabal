@@ -24,11 +24,6 @@ executable salmon
 
 Test-Suite test-salmon
   type:       exitcode-stdio-1.0
-  build-depends:       base ==4.6.*, hspec, salmon
+  build-depends:       base ==4.6.*, lens ==3.9.0.2, parsec ==3.1.5, mtl ==2.1.2, directory ==1.2.0.1, hspec
   hs-source-dirs:      spec, src
   main-is:             Main.hs
-
-library
-  build-depends:       base ==4.6.*
-  exposed-modules:     Salmon
-  hs-source-dirs:      src
