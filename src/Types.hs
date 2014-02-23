@@ -40,6 +40,9 @@ data Ruby = Class {
                 input :: [String],
                 output :: String
             }
+            -- Currying = only acceptable when:
+            -- 1. assigning to a function name, OR
+            -- 2. being passed in to a block.
             | CurriedFunction {
                 curriedFunctionName :: String,
                 curriedArgs :: [Ruby]
@@ -102,10 +105,9 @@ instance ConvertToRuby Ruby where
     where makeEnum c  = printf "%s = %s" c (symbolize c)
           symbolize c = ":" ++ (toLower <$> c)
   toRuby (Contract inp out) = printf "Contract %s => %s" (join ", " inp) out
-  toRuby c@(CurriedFunction cfName cfArgs) = printf "(->(%s) { %s(%s) })" (join "," curryArgs) cfName (join ", " (map toRuby (blend cfArgs curryArgs)))
-    where curryArgs = placeholderArgsFor c []
+  toRuby c@(CurriedFunction cfName cfArgs) = error $ "Curried functions can only be used as a block, or if you assign it a name by making it into a new function. You can't use curried functions in function composition etc. We don't make lambdas out of curried functions simply because it doesn't look like idiomatic Ruby. You're seeing this because you might have tried to make this curried function into a lambda: " ++ show c
 
-  toRuby (BlockCurriedFunction c@(CurriedFunction cfName cfArgs)) = printf " do |%s|\n  %s(%s)\nend" (join "," curryArgs) cfName (join ", " (map toRuby (blend cfArgs curryArgs)))
+  toRuby (BlockCurriedFunction c@(CurriedFunction cfName cfArgs)) = printf " { |%s| %s(%s) }" (join "," curryArgs) cfName (join ", " (map toRuby (blend cfArgs curryArgs)))
     where curryArgs = placeholderArgsFor c []
     
   toRuby x = show x

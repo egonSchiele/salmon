@@ -133,9 +133,9 @@ commentParser = do
 
 blockCurriedFunctionParser :: RubyParser
 blockCurriedFunctionParser = do
-    string "(" >> spaces >> string "&"
-    curriedFunc <- curriedFunctionParser
-    spaces >> string ")"
+    oneOf "( " >> spaces >> string "&"
+    curriedFunc <- curriedFunctionParser <||> curriedFunctionSingleArgParser
+    spaces >> (optional $ string ")")
     return $ BlockCurriedFunction curriedFunc
 
 curriedFunctionParser :: RubyParser
@@ -148,9 +148,34 @@ curriedFunctionParser = do
       then fail "Not a curried function, didn't find an underscore (_)"
       else return $ CurriedFunction name_ (map Unresolved args_)
 
+-- Sometimes, you want to pass in a function name somewhere. This function
+-- takes one argument, so you could pass it in like this:
+--
+-- > (1..10).map(&increment(_))
+--
+-- But it would be nicer to pass it in like this:
+--
+-- > (1..10).map(&increment)
+--
+-- The only two places where this is legal: blocks and function
+-- composition. For example, you can't do this:
+--
+-- > incrDup := increment
+--
+-- Because I don't know that `increment` is meant to be a function in this
+-- context. But in blocks and function composition, we *know* its
+-- a function. So leaving off the _ is ok. This parser just parses an
+-- identifier and makes a curried function out of it, where the curried
+-- function just takes one argument. This is the kind of shit you have to
+-- do in ruby.
+curriedFunctionSingleArgParser :: RubyParser
+curriedFunctionSingleArgParser = do
+    name_ <- manyTill identifier (oneOf " )") <||> manyTill identifier eof
+    return $ CurriedFunction name_ [Identifier "_"]
+
 fmapParser :: RubyParser
 fmapParser = do
-    function <- manyTill (noneOf "<") (string "<$> ")
+    function <- manyTill (noneOf "<") (string " <$> ")
     item <- many1 anyChar
     let str = printf "%s.map(&%s)" item function
     return $ Unresolved str
