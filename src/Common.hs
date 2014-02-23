@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleContexts, RankNTypes #-}
+
 module Common (
  module Text.Parsec
 ,module Data.List
@@ -11,6 +13,7 @@ module Common (
 ,module System.Directory
 ,module Data.Char
 ,module Data.Monoid
+,whitespace
 ) where
 
 import Text.Parsec hiding (State, uncons)
@@ -25,3 +28,6 @@ import Data.Maybe
 import System.Directory
 import Data.Char
 import Data.Monoid
+
+whitespace :: Stream s m Char => ParsecT s u m ()
+whitespace = skipMany1 space

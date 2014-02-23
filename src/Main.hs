@@ -30,7 +30,7 @@ parseRuby (Unresolved line) = do
                 parseRuby result
 
 -- debugging
-parseRuby i@(Identifier line) = do
+parseRuby i@(Atom line) = do
     liftIO $ print i
     return i
 
@@ -53,9 +53,9 @@ parseRuby (New c params_) = do
       return $ New c newParams
     else return $ New c params_
 
-parseRuby (Embedded xs) = do
+parseRuby (List xs) = do
     newXs <- mapM parseRuby xs
-    return $ Embedded newXs
+    return $ List newXs
 
 parseRuby (Function n a b@(Unresolved _)) = do
     newBody <- parseRuby b

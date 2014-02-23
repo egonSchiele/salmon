@@ -9,26 +9,18 @@ import qualified Debug.Trace as D
 
 tryChoice parsers = choice $ map try parsers
 
-betweenSpaces :: Stream s m Char => ParsecT s u m a -> ParsecT s u m a
-betweenSpaces p = between spaces spaces p
-
-identifier :: Stream s m Char => ParsecT s u m Char
-identifier = alphaNum <|> (oneOf "-_&?!.")
-
 -- | Parses a constructor (like the `Just a` part of `data Maybe = Nothing | Just a`)
 classParser :: RubyParser
 classParser = do
-    string "data"
-    spaces
-    name_ <- many1 alphaNum
-    spaces
-    fields_ <- (many1 alphaNum) `sepBy` (many1 space)
-    return $ Class name_ fields_
+    name <- string "data" >> whitespace >> parseAtom
+    whitespace
+    fields <- parseAtom `sepBy` whitespace
+    return $ Class name fields
 
 -- | Parses something like `Just "val"`
 newParser :: [Ruby] -> RubyParser
 newParser cls = do
-    let classNames = map name cls
+    let classNames = map className cls
     className_ <- choice (map string classNames)
     char ' '
     params_ <- (many1 $ noneOf " =,") `sepBy1` space
@@ -39,46 +31,59 @@ newParser cls = do
 idParser :: RubyParser
 idParser = do
     line <- option "" (many1 anyChar)
-    return $ Identifier line
+    return $ Atom line
 
 embeddedParser :: CodeState -> RubyParser
 embeddedParser state = do
     let ops = state ^. operators
         cls = state ^. classes
-        parsers = tryChoice [stringParser, fmapParser, blockFunctionParser, compositionParser, curriedFunctionParser, newParser cls, infixCallParser, operatorUseParser ops]
+        parsers = tryChoice [parseString, fmapParser, blockFunctionParser, compositionParser, curriedFunctionParser, newParser cls, infixCallParser, operatorUseParser ops]
     front <- manyTill anyChar (try . lookAhead $ parsers)
     D.trace ("front: " ++ (show front)) (return ())
     ruby <- parsers
     D.trace ("ruby: " ++ (show ruby)) (return ())
     rest <- (embeddedParser state) <||> idParser
     D.trace ("rest: " ++ (show rest)) (return ())
-    let rubies = filter (not . blankIdentifier) [Identifier front, ruby, rest]
+    let rubies = filter (not . blankAtom) [Atom front, ruby, rest]
     if length rubies == 1
       then return $ head rubies
-      else return $ Embedded rubies
+      else return $ List rubies
 
-stringParser :: RubyParser
-stringParser = singleQuoteStringParser <||> doubleQuoteStringParser
+parseString :: RubyParser
+parseString = parseStringType '\'' <|> parseStringType '"'
 
-singleQuoteStringParser :: RubyParser
-singleQuoteStringParser = do
-    char '\''
-    string <- manyTill anyChar (char '\'')
-    return $ Identifier ("'" ++ string ++ "'")
+parseStringType :: Char -> RubyParser
+parseStringType chr = do
+    char chr
+    x <- many (noneOf [chr])
+    char chr
+    return $ String x
 
-doubleQuoteStringParser :: RubyParser
-doubleQuoteStringParser = do
-    char '"'
-    string <- manyTill anyChar (char '"')
-    return $ Identifier ("\"" ++ string ++ "\"")
+parseAtom :: Stream s m Char => ParsecT s u m String
+parseAtom = many1 $ alphaNum <|> (oneOf "-_&?!.")
+
+parseList :: RubyParser
+parseList = liftM List $ sepBy parseLine whitespace
+
+parseBracketed :: RubyParser
+parseBracketed = do
+    char '('
+    x <- parseList
+    char ')'
+    return x
+
+parseLine :: RubyParser
+parseLine = liftM Atom parseAtom
+       <|> parseString
+       <|> parseBracketed
 
 functionParser :: RubyParser
 functionParser = do
-    name_ <- manyTill identifier (char ' ')
-    args_ <- ((many1 identifier) `endBy` space)
-    string ":= "
+    name <- parseAtom
+    args <- parseAtom `endBy` whitespace
+    string ":=" >> whitespace
     body_ <- many1 anyChar
-    return $ Function name_ args_ (Unresolved body_)
+    return $ Function name args (Unresolved body_)
 
 infixCallParser :: RubyParser
 infixCallParser = do
@@ -118,13 +123,13 @@ operatorUseParser ops = do
 enumParser :: RubyParser
 enumParser = do
     string "enum "
-    options <- ((many1 identifier) `sepBy1` (string " | "))
+    options <- parseAtom `sepBy1` (string " | ")
     return $ Enum options
 
 contractParser :: RubyParser
 contractParser = do
-    manyTill identifier (try $ string " :: ")
-    params <- ((many1 $ noneOf " ") `sepBy1` (string " -> "))
+    parseAtom >> whitespace >> string "::" >> whitespace
+    params <- (many1 $ noneOf " ") `sepBy1` (whitespace >> string "->" >> whitespace)
     return $ Contract (init params) (last params)
 
 commentParser :: RubyParser
@@ -132,25 +137,24 @@ commentParser = do
     leadingSpace <- option "" (many1 space)
     char '#'
     rest <- many1 anyChar
-    return $ Identifier (leadingSpace ++ "#" ++ rest)
+    return $ Atom (leadingSpace ++ "#" ++ rest)
 
 blockFunctionParser :: RubyParser
 blockFunctionParser = do
     oneOf "( " >> spaces >> string "&"
-    optional $ string "("
     curriedFunc <- compositionParser <||> curriedFunctionParser <||> curriedFunctionSingleArgParser
-    spaces >> (optional $ string ")") >> (optional $ string ")")
+    spaces >> (optional $ char ')')
     return $ BlockFunction curriedFunc
 
 curriedFunctionParser :: RubyParser
 curriedFunctionParser = do
-    name_ <- manyTill identifier (oneOf "(")
-    spaces
-    args_ <- many1 (noneOf "(=,)") `sepBy1` (string ", ")
-    char ')'
-    if ("_" `notElem` args_)
+    name <- parseAtom
+    (optional $ char '(') <|> whitespace
+    args <- parseAtom `sepBy1` (spaces >> char ',' >> spaces)
+    optional $ char ')'
+    if ("_" `notElem` args)
       then fail "Not a curried function, didn't find an underscore (_)"
-      else return $ CurriedFunction name_ (map Unresolved args_)
+      else return $ CurriedFunction name (map Unresolved args)
 
 -- Sometimes, you want to pass in a function name somewhere. This function
 -- takes one argument, so you could pass it in like this:
@@ -174,8 +178,8 @@ curriedFunctionParser = do
 -- do in ruby.
 curriedFunctionSingleArgParser :: RubyParser
 curriedFunctionSingleArgParser = do
-    name_ <- manyTill identifier (oneOf " )") <||> manyTill identifier eof
-    return $ CurriedFunction name_ [Identifier "_"]
+    name <- parseAtom
+    return $ CurriedFunction name [Atom "_"]
 
 fmapParser :: RubyParser
 fmapParser = do
@@ -192,7 +196,7 @@ fmapParser = do
 
 compositionParser :: RubyParser
 compositionParser = do
-    names <- many1 identifier `sepBy1` (string " . ")
+    names <- parseAtom `sepBy1` (spaces >> char '.' >> spaces)
     if length names < 2
       then fail "Not a composition since there's only one function!!"
       else return $ Composition names Nothing

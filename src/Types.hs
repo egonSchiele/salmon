@@ -7,19 +7,20 @@ import Common
 import qualified Debug.Trace as D
 
 data Ruby = Class {
-              name :: String,
-              fields :: [String]
+              className :: String,
+              classFields :: [String]
             }
             | New {
-              className :: String,
+              newClassName :: String,
               params :: [Ruby]
             }
             | Unresolved String -- some code that hasn't been resolved into a final `Ruby` object yet
-            | Identifier String -- like `(1..10)` from `(1..10).map()`. Just something that should be copied directly.
-            | Embedded [Ruby]   -- Useful things like `p Just "hello"`, where `p` is an `Identifier` but `Just "hello"` is a `New`.
+            | Atom String
+            | String String
+            | List [Ruby]
             | Function {
                 functionName :: String,
-                args :: [String],
+                functionArgs :: [String],
                 body :: Ruby
               }
             | InfixCall {
@@ -52,7 +53,7 @@ data Ruby = Class {
 
 
 missingArgs :: Ruby -> [Ruby]
-missingArgs (CurriedFunction _ cfArgs) = filter (== (Identifier "_")) cfArgs
+missingArgs (CurriedFunction _ cfArgs) = filter (== (Atom "_")) cfArgs
 
 -- all the letters of the alphabet, as strings instead of chars.
 alphabets :: [String]
@@ -75,7 +76,7 @@ makeCompositionString (f:funcs) arg = printf "%s(%s)" f (makeCompositionString f
 -- I can do currying of any position.
 blend xs ys = blend_ xs ys []
 blend_ [] _ acc = acc
-blend_ ((Identifier "_"):xs) (y:ys) acc = blend_ xs ys (acc ++ [Identifier y])
+blend_ ((Atom "_"):xs) (y:ys) acc = blend_ xs ys (acc ++ [Atom y])
 blend_ (x:xs) ys acc = blend_ xs ys (acc ++ [x])
 
 class ConvertToRuby a where
@@ -91,8 +92,9 @@ instance ConvertToRuby Ruby where
                       then ""
                       else printf "(%s)" (join ", " $ map toRuby p)
 
-  toRuby (Identifier str) = str
-  toRuby (Embedded xs) = concat $ map toRuby xs
+  toRuby (Atom str) = str
+  toRuby (String str) = str
+  toRuby (List xs) = join " " $ map toRuby xs
 
   -- if the body is a curried function, this
   -- function needs to take more params to pass
@@ -109,7 +111,7 @@ instance ConvertToRuby Ruby where
           bodyStr = case body_ of
                       (CurriedFunction cfName cfArgs) -> printf "%s(%s)" cfName (join ", " (map toRuby (blend cfArgs extraArgs)))
                       (Composition funcs (Just arg)) -> makeCompositionString funcs arg
-                      (Composition funcs Nothing)    -> makeCompositionString funcs (Identifier . head $ extraArgs)
+                      (Composition funcs Nothing)    -> makeCompositionString funcs (Atom . head $ extraArgs)
                       _ -> toRuby body_
 
   toRuby (InfixCall left name_ right) = printf "%s(%s, %s)" name_ (toRuby left) (toRuby right)
@@ -120,7 +122,7 @@ instance ConvertToRuby Ruby where
   toRuby (Contract inp out) = printf "Contract %s => %s" (join ", " inp) out
   toRuby c@(CurriedFunction cfName cfArgs) = error $ "Curried functions can only be used as a block, or if you assign it a name by making it into a new function. You can't use curried functions in function composition etc. We don't make lambdas out of curried functions simply because it doesn't look like idiomatic Ruby. You're seeing this because you might have tried to make this curried function into a lambda: " ++ show c
 
-  toRuby (BlockFunction c@(Composition funcs Nothing)) = printf " { |a| %s }" (makeCompositionString funcs (Identifier "a"))
+  toRuby (BlockFunction c@(Composition funcs Nothing)) = printf " { |a| %s }" (makeCompositionString funcs (Atom "a"))
   toRuby (BlockFunction c@(Composition funcs (Just arg))) = error $ "You provided a composed function to a block, but then gave it an argument! " ++ show c
   toRuby (BlockFunction c@(CurriedFunction cfName cfArgs)) = printf " { |%s| %s(%s) }" (join "," curryArgs) cfName (join ", " (map toRuby (blend cfArgs curryArgs)))
     where curryArgs = placeholderArgsFor c []
@@ -158,5 +160,8 @@ concatRuby [] = []
 concatRuby ((Operator _ _):xs) = concatRuby xs
 concatRuby (x:xs) = x:(concatRuby xs)
 
-blankIdentifier (Identifier "") = True
-blankIdentifier _ = False
+blankAtom (Atom "") = True
+blankAtom _ = False
+
+unwrapAtom :: Ruby -> String
+unwrapAtom (Atom x) = x
