@@ -52,25 +52,36 @@ parseAtom = do
     rest <- many $ alphaNum <|> (oneOf validChars)
     return $ first:rest
 
-maybeUnwrap parsed = return $
-                       if length parsed == 1
+maybeUnwrap parsed = if length parsed == 1
                          then head parsed
                          else List parsed
+
+checkForFmap parsed = case elemIndex (String "<$>") parsed of
+                        Nothing -> parsed
+                        Just i -> newParsed
+                          where front = take (i - 1) parsed
+                                back  = takeEnd (length parsed - (i + 2)) parsed
+                                prev  = parsed !! (i - 1)
+                                next  = parsed !! (i + 1)
+                                cur   = parsed !! i
+                                newParsed = front ++ [next, String ".map", BlockFunction prev] ++ back
+
+checkForApply parsed = case elemIndex (String "$") parsed of
+                         Nothing -> parsed
+                         Just i -> case prev of
+                                     Parens (Composition n a) -> front ++ [Composition n (Just next)] ++ back
+                                     Composition n a -> front ++ [Composition n (Just next)] ++ back
+                           where front = take (i - 1) parsed
+                                 back  = takeEnd (length parsed - (i + 2)) parsed
+                                 prev  = parsed !! (i - 1)
+                                 next  = parsed !! (i + 1)
+                                 cur   = parsed !! i
 
 parseList :: CodeState -> RubyParser
 parseList state = do
     parsed <- (parseExpr state) `sepBy` whitespace
     tr ("parsed from parseList: " ++ show parsed)
-    case elemIndex (String "<$>") parsed of
-      Nothing -> maybeUnwrap parsed
-      Just i -> do
-        let front = take (i - 1) parsed
-            back  = takeEnd (length parsed - (i + 2)) parsed
-            prev  = parsed !! (i - 1)
-            next  = parsed !! (i + 1)
-            cur   = parsed !! i
-            newParsed = front ++ [next, String ".map", BlockFunction prev] ++ back
-        maybeUnwrap newParsed
+    return $ maybeUnwrap . checkForApply . checkForFmap $ parsed
 
 parseBracketed :: CodeState -> RubyParser
 parseBracketed state = do
