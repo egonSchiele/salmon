@@ -1,1 +1,2 @@
-a . b . c $ 5
+data Maybe val
+JSON.parse . File.read . File.basename <$> Maybe file

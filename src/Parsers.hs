@@ -8,8 +8,8 @@ import Utils
 import qualified Debug.Trace as D
 
 tryChoice parsers = choice $ map try parsers
--- tr str = return ()
-tr str = D.trace str (return ())
+tr str = return ()
+-- tr str = D.trace str (return ())
 
 -- | Parses a constructor (like the `Just a` part of `data Maybe = Nothing | Just a`)
 parseClass :: RubyParser
