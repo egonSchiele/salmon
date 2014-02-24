@@ -84,3 +84,9 @@ main = hspec $ do
         if actual == expected
             then True
             else error ("expected: " ++ expected ++ "\ngot: " ++ actual)
+
+  describe "mixing ruby and salmon" $ do
+      bulkCheck $
+        [("assigning vars", "a = incr <$> (1..10)", "a = (1..10).map { |a| incr(a) }"),
+         ("functions with fmap", "p incr <$> (1..10)", "p (1..10).map { |a| incr(a) }")
+        ]
