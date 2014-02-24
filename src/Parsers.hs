@@ -67,9 +67,12 @@ maybeUnwrap parsed = if length parsed == 1
 checkForFmap parsed = case elemIndex (String "<$>") parsed of
                         Nothing -> parsed
                         Just i -> newParsed
-                          where front = take (i - 1) parsed
-                                back  = takeEnd (length parsed - (i + 2)) parsed
-                                next  = parsed !! (i + 1)
+                          -- for all of these, we actually skip the two
+                          -- values around <$> because those are spaces
+                          -- that we added ourselves.
+                          where front = take (i - 2) parsed
+                                back  = takeEnd (length parsed - (i + 3)) parsed
+                                next  = parsed !! (i + 2)
                                 cur   = parsed !! i
                                 -- If its something like `incr <$>
                                 -- (1..10)`, `incr` will get parsed as an
@@ -77,7 +80,7 @@ checkForFmap parsed = case elemIndex (String "<$>") parsed of
                                 -- meant a curried function because the two
                                 -- possibilities are curried func or
                                 -- composed func.
-                                prev  = case parsed !! (i - 1) of
+                                prev  = case parsed !! (i - 2) of
                                           (Atom x) -> CurriedFunction x [Atom "_"]
                                           x -> x
                                 newParsed = front ++ [next, String ".map", BlockFunction prev] ++ back
@@ -88,17 +91,20 @@ checkForApply parsed = case elemIndex (String "$") parsed of
                                      Parens (Composition n a) -> front ++ [Composition n (Just next)] ++ back
                                      Composition n a -> front ++ [Composition n (Just next)] ++ back
                                      _ -> parsed
-                           where front = take (i - 1) parsed
-                                 back  = takeEnd (length parsed - (i + 2)) parsed
-                                 prev  = parsed !! (i - 1)
-                                 next  = parsed !! (i + 1)
+                          -- for all of these, we actually skip the two
+                          -- values around <$> because those are spaces
+                          -- that we added ourselves.
+                           where front = take (i - 2) parsed
+                                 back  = takeEnd (length parsed - (i + 3)) parsed
+                                 prev  = parsed !! (i - 2)
+                                 next  = parsed !! (i + 2)
                                  cur   = parsed !! i
 
 parseList :: CodeState -> RubyParser
 parseList state = do
     parsed <- (parseExpr state) `sepBy` whitespace
     tr ("parsed from parseList: " ++ show parsed)
-    return $ maybeUnwrap . checkForApply . checkForFmap $ parsed
+    return $ maybeUnwrap . checkForApply . checkForFmap . intersperse (String " ") $ parsed
 
 parseBracketed :: CodeState -> RubyParser
 parseBracketed state = do

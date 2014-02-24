@@ -42,7 +42,7 @@ main = hspec $ do
       ]
   describe "functions" $ do
     bulkCheck $
-      [("function", "add a b := a + b", "def add(a, b)\n  a+b\nend")
+      [("function", "add a b := a + b", "def add(a, b)\n  a + b\nend")
       ]
     
   describe "function composition" $ do
