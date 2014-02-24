@@ -1,0 +1,303 @@
+data Person name age
+
+# hello `there` ok
+
+addAges :: Person -> Person -> Num
+addAges p1 p2 := p1.age + p2.age
+
+say_hello := p "hello world"
+
+op <+> addAges
+
+adit   = Person "adit" 27
+maggie = Person "maggie" 28
+
+enum RED | GREEN | BLUE
+
+p adit <+> maggie
+say_hello
+
+add a b := a + b
+
+incr := add(_, 1, _)
+
+p incr(2)
+
+(1..10).map(add(1, _))
+(1..10).map(&add(1, _))
+
+add(1, _) <$> (1..10)
+
+
+incr <$> (1..10)
+
+vs
+
+incr(_) <$> (1..10)
+
+incr <$> (1..10)
+
+what is
+
+(1..10).map(&incr) ?? Can you assume that incr is a method? OR do you need to assume that its a lambda??
+
+Similarly, what is
+
+incr . incr $ 3 ?
+
+What about
+
+incr . incr <$> 3?
+
+aka
+
+3.map(&(incr . incr))
+
+So should you always assume that, in this context, you're passing a function? The problem is, what is:
+
+incrDup := incr
+
+then? Right now it will compile to
+
+def incrDup
+  incr
+end
+
+But should it be:
+
+incrDup x
+  incr x
+ end
+
+ ??
+
+Is this the monomorphism restriction that Haskell keeps yelling at me about?
+
+So is the rule, if you pass a function into a block with an ampersand:
+
+(1..10).map(&incr)
+
+it will assume its a method, but without the ampersand, its a parameter:
+
+(1..10).map(incr)
+
+But you can say its a lambda if you use the currying syntax?
+
+(1..10).map(incr(_))
+
+I mean, without this, function composition will be stupid:
+
+JSON.parse(_) . File.read(_) $ filename
+
+
+adit = hello(_)
+
+adit is now a lambda? Then you can't do
+
+adit x
+
+you need to do
+
+adit.call x.
+
+So maybe for the sake of everyone's sanity, we can assume that currying just does not happen UNLESS we are creating a function or passing it into a block? What about function composition though?
+
+add(1, _) . add(1, _) $ 5
+
+What are these adds? lambdas? TBH that doesn't look very good anyway:
+
+lambda { |x| x + 1 }.call(lambda { |x| x + 1 }.call(5))
+
+Not exactly readable.
+
+
+
+
+So, ok.
+
+Currying = only acceptable when:
+1. assigning to a function name, OR
+2. being passed in to a block.
+
+You can almost never pass a function with only one arg in anywhere. For example, this isnt ok:
+
+incrDup := incr
+
+Because we dont know that incr is a function.
+
+But this is ok:
+
+
+incr . incr $ 5
+
+Because we always assume that in function composition, all the values are functions you can call. No lambdas or anything.
+Similarly:
+
+incr <$> (1..10)
+= (1..10).map(&incr)
+
+anything that is following that ampersand is a function you can call. So just like
+
+(1..10).map(&add(1, _))
+
+turns into:
+
+(1..10).map { |x| add(1, x) }
+
+, `(1..10).map(&incr)` turns into:
+
+(1..10).map { |x| incr(x) }
+
+What about
+
+map (1..10) &incr ??
+
+It becomes:
+
+map((1..10)) { |x| incr(x) }
+
+So ampersand = automatic block.
+
+What about:
+
+map (1..10) &:even?
+
+I want this to become:
+
+map((1..10), &:even?)
+
+i.e.
+
+map((1..10)) { |x| x.even? }
+
+Or
+
+&:even? <$> (1..10)
+
+That should stay as 
+
+(1..10).map(&:even?)
+
+So, if there's a colon after the ampersand, don't convert to a block, otherwise do?
+
+Now onto function composition. Here are the ways you can do it:
+
+
+both := even . length
+
+becomes:
+
+def both a
+  even(length(a))
+end
+
+even . length $ 5
+
+becomes:
+
+even(length(5))
+
+and
+
+even . length <$> 5
+
+becomes
+
+5.map(&(even . length))
+
+which is automatically:
+
+5.map { |a| even(length(a)) }
+
+What about:
+
+sizeEven := length . filter &even ??
+
+I want it to become:
+
+def sizeEven list
+  length(list.filter { |x| even(x) })
+end
+
+So how do you differentiate between a method call and a function call in function composition? And what about for currying?
+
+
+isEven := .even?
+
+becomes:
+
+def isEven a
+  a.even?
+end
+
+And
+
+sizeEven := length . .filter(&:even?) ??
+
+becomes:
+
+def sizeEven a
+  length(a.filter(&:even?))
+end
+
+Or
+
+sizeEven := length . .filter(&even) ??
+
+becomes:
+
+def sizeEven a
+  length(a.filter { |x| even(x) })
+end
+
+Or:
+
+sizeEven := .length . .filter(&:even?)
+
+which is:
+
+def sizeEven a
+  a.filter(&:even?).length
+end
+
+But at that point, you might as well say:
+
+sizeEven a := a.filter(&:even?).length
+
+Even if length is a function, not a method, it makes more sense to do this:
+
+sizeEven a := length a.filter(&:even?)
+
+So I just dont think its worth while to make composition and currying support methods as well as functions...
+
+
+
+Lets go back to the original spec. Here are all the ways you can use function composition:
+
+both := even . length
+
+becomes:
+
+def both a
+  even(length(a))
+end
+
+even . length $ 5
+
+becomes:
+
+even(length(5))
+
+and
+
+even . length <$> 5
+
+becomes
+
+5.map(&(even . length))
+
+And that becomes:
+
+5.map { |x| even(length(x)) }
+
+So again, function composition *never* produces a lambda.

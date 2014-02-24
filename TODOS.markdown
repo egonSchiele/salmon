@@ -1,0 +1,5 @@
+- Run against the entire sinatra codebase and compare input to output files. Nothing should change...Salmon should leave regular ruby totally as-is.
+- fix broken specs
+- write specs for string interpolation, bet that's a bad corner case
+- function composition should need parens around it
+- add list comprehensions
