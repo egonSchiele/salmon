@@ -132,7 +132,7 @@ instance ConvertToRuby Ruby where
   toRuby (BlockFunction c@(Composition funcs (Just arg))) = error $ "You provided a composed function to a block, but then gave it an argument! " ++ show c
   toRuby (BlockFunction c@(CurriedFunction cfName cfArgs)) = printf " { |%s| %s(%s) }" (join "," curryArgs) cfName (join ", " (map toRuby (blend cfArgs curryArgs)))
     where curryArgs = placeholderArgsFor c []
-    
+  toRuby (Composition funcs (Just arg)) = makeCompositionString funcs arg
   toRuby x = show x
 
 data Extra = Contracts deriving (Show, Eq)

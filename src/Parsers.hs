@@ -8,8 +8,8 @@ import Utils
 import qualified Debug.Trace as D
 
 tryChoice parsers = choice $ map try parsers
-tr str = return ()
--- tr str = D.trace str (return ())
+-- tr str = return ()
+tr str = D.trace str (return ())
 
 -- | Parses a constructor (like the `Just a` part of `data Maybe = Nothing | Just a`)
 parseClass :: RubyParser
@@ -47,6 +47,13 @@ parseStringType chr = do
 
 validChars = "_&?!."
 
+-- parses &blk and *args
+parseSpecialArg :: Stream s m Char => ParsecT s u m String
+parseSpecialArg = do
+    first <- alphaNum <|> oneOf "*&"
+    rest <- many alphaNum
+    return $ first:rest
+
 parseAtom :: Stream s m Char => ParsecT s u m String
 parseAtom = do
     first <- alphaNum
@@ -62,9 +69,17 @@ checkForFmap parsed = case elemIndex (String "<$>") parsed of
                         Just i -> newParsed
                           where front = take (i - 1) parsed
                                 back  = takeEnd (length parsed - (i + 2)) parsed
-                                prev  = parsed !! (i - 1)
                                 next  = parsed !! (i + 1)
                                 cur   = parsed !! i
+                                -- If its something like `incr <$>
+                                -- (1..10)`, `incr` will get parsed as an
+                                -- atom but in this case we can assume we
+                                -- meant a curried function because the two
+                                -- possibilities are curried func or
+                                -- composed func.
+                                prev  = case parsed !! (i - 1) of
+                                          (Atom x) -> CurriedFunction x [Atom "_"]
+                                          x -> x
                                 newParsed = front ++ [next, String ".map", BlockFunction prev] ++ back
 
 checkForApply parsed = case elemIndex (String "$") parsed of
@@ -72,6 +87,7 @@ checkForApply parsed = case elemIndex (String "$") parsed of
                          Just i -> case prev of
                                      Parens (Composition n a) -> front ++ [Composition n (Just next)] ++ back
                                      Composition n a -> front ++ [Composition n (Just next)] ++ back
+                                     _ -> parsed
                            where front = take (i - 1) parsed
                                  back  = takeEnd (length parsed - (i + 2)) parsed
                                  prev  = parsed !! (i - 1)
@@ -137,7 +153,7 @@ parseFunction :: RubyParser
 parseFunction = do
     name <- parseAtom
     whitespace
-    args <- parseAtom `endBy` whitespace
+    args <- (parseAtom <|> parseSpecialArg) `endBy` whitespace
     string ":=" >> whitespace
     body_ <- many1 anyChar
     return $ Function name args (Unresolved body_)
@@ -209,6 +225,9 @@ parseBlockFunction = do
     case openingParen of
       Nothing -> return ()
       Just _ -> char ')' >> return ()
+    -- Don't want to accidentally parse the block in a function def, like
+    -- `def map(list, &blk)` or in our case, `map list &blk :=`
+    notFollowedBy $ whitespace >> string ":="
     return $ BlockFunction curriedFunc
 
 parseCurriedFunction :: RubyParser
@@ -277,12 +296,12 @@ parseRuby (Unresolved line) = do
       Left err -> error (show err)
       Right result -> do
                 maybeModifyState result
-                tr $ print result
+                tr $ show result
                 parseRuby result
 
 -- debugging
 parseRuby i@(Atom line) = do
-    tr $ print i
+    tr $ show i
     return i
 
 parseRuby (CurriedFunction n cfArgs) = do

@@ -45,7 +45,7 @@ main = hspec $ do
       bulkCheck $
         [("with apply in a function", "parse file := (JSON.parse . File.read) $ file", "def parse(file)\n  JSON.parse(File.read(file))\nend"),
          ("in a function", "parse := JSON.parse . File.read", "def parse(a)\n  JSON.parse(File.read(a))\nend"),
-         ("with apply", "JSON.parse . File.read $ filename", "JSON.parse(File.read(filename))"),
+         ("with apply", "(JSON.parse . File.read) $ filename", "JSON.parse(File.read(filename))"),
          ("with more than two functions", "(a . b . c) $ 5", "a(b(c(5)))"),
          ("in a block", "(1..10).map(&(incr . incr))", "(1..10).map { |a| incr(incr(a)) }"),
          ("with fmap", "(incr . incr) <$> (1..10)", "(1..10).map { |a| incr(incr(a)) }"),

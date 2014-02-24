@@ -1,4 +1,1 @@
-add a b := a + b
-incr := add(1, _)
-
-parse := (JSON.parse . File.read)
+map list &blk := list.map(&blk.call)
