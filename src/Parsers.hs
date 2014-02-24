@@ -233,9 +233,11 @@ parseBlockFunction = do
 parseCurriedFunction :: RubyParser
 parseCurriedFunction = do
     name <- parseAtom
-    (optional $ char '(') <|> whitespace
-    args <- (parseAtom <|> string "_") `sepBy1` (spaces >> char ',' >> spaces)
-    optional $ char ')'
+    opening <- oneOf "( "
+    args <- (many1 $ noneOf " ,)") `sepBy1` (spaces >> char ',' >> spaces)
+    case opening of
+      ' ' -> return ()
+      '(' -> char ')' >> return ()
     if ("_" `notElem` args)
       then fail "Not a curried function, didn't find an underscore (_)"
       else return $ CurriedFunction name (map (\a -> if a == "_" then (Atom a) else (Unresolved a)) args)

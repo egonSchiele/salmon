@@ -1,1 +1,1 @@
-map list &blk := list.map(&blk.call)
+(1..10).map(&add(:foo, _))

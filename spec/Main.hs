@@ -30,6 +30,10 @@ bulkCheck checks = forM_ checks $ \(label, ruby, expected) -> do
                         check ruby expected
 
 main = hspec $ do
+  -- describe "currying" $ do
+  --     it "check currying parser" $ do
+  --       checkParser parseCurriedFunction "add(:foo, _)" "add(:foo, a)"
+    
   describe "general parsers" $ do
     bulkCheck $
       [("data types", "data Maybe val", "Maybe = Struct.new(:val)"),
@@ -59,7 +63,7 @@ main = hspec $ do
          ("two args", "incr := add(_, 1, _)", "def incr(a, b)\n  add(a, 1, b)\nend"),
          ("with this function already takes an arg", "incr a := add(1, _)", "def incr(a, b)\n  add(1, b)\nend"),
          ("with no parenthesis", "incr := add 1, _", "def incr(a)\n  add(1, a)\nend"),
-         ("with no parenthesis, but enclosed in parens", "incr := (add 1, _)", "def incr(a)\n  (add(1, a))\nend"),
+         ("with no parenthesis, but enclosed in parens", "incr := (add 1, _)", "def incr(a)\n  add(1, a)\nend"),
          ("a single-arg function in a block", "(1..10).map(&incr)", "(1..10).map { |a| incr(a) }"),
          ("a single-arg function in a block (explicit)", "(1..10).map(&incr(_))", "(1..10).map { |a| incr(a) }"),
          ("with fmap", "incr <$> (1..10)", "(1..10).map { |a| incr(a) }"),
