@@ -1,2 +1,4 @@
-(1..10).map(&incr)
-(1..10).map(&(incr . incr))
+add a b := a + b
+incr := add(1, _)
+
+(incr . incr) <$> (1..10)

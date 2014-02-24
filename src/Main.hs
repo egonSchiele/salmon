@@ -88,6 +88,7 @@ printHelp = do
     putStrLn "Usage: `salmon test.slm` (writes to test.rb)"
     putStrLn "or `salmon input.slm output.rb` to write to output.rb"
 
+
 main = do
     args <- getArgs
     case args of

@@ -16,8 +16,18 @@ main = hspec $ do
 --     it "should parse parenthesis correctly" $ do
 --       "p (double(_) <$> (1..10))" `parseWith` ...
       
+parseFunction "add a b := a + b" "def add(a, b)\n  a + b\nend"
+
+parseAtom "a" should be Right
+
+("incr := add(1, _)", "def incr(a)\n  add(1, a)\nend")
+
+("incr . incr <$> (1..10)", "(1..10).map { |a| incr(incr(a)) }")
+
 
 [
+
+
 ("(1..10).map(&double(_))", "(1..10).map { |a| double(a) }"),
 ("(1..10).map &double(_)", "(1..10).map { |a| double(a) }"), 
 ("(1..10).map(&double)", "(1..10).map { |a| double(a) }"),

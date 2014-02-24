@@ -49,7 +49,7 @@ validChars = "_&?!."
 parseAtom :: Stream s m Char => ParsecT s u m String
 parseAtom = do
     first <- alphaNum
-    rest <- many1 $ alphaNum <|> (oneOf validChars)
+    rest <- many $ alphaNum <|> (oneOf validChars)
     return $ first:rest
 
 maybeUnwrap parsed = return $
@@ -99,10 +99,10 @@ parseLine state = parseComment
 parseExpr :: CodeState -> RubyParser
 parseExpr state = parseString
       <||> parseBracketed state
+      <||> parseCurriedFunction
       <||> parseFunctionCall
       <||> parseBlockFunction
       <||> parseComposition
-      <||> parseCurriedFunction
       <||> parseNew state
       <||> parseInfixCall
       <||> parseOperatorUse state
@@ -124,6 +124,7 @@ parseFunctionCall = do
 parseFunction :: RubyParser
 parseFunction = do
     name <- parseAtom
+    whitespace
     args <- parseAtom `endBy` whitespace
     string ":=" >> whitespace
     body_ <- many1 anyChar
@@ -202,11 +203,11 @@ parseCurriedFunction :: RubyParser
 parseCurriedFunction = do
     name <- parseAtom
     (optional $ char '(') <|> whitespace
-    args <- parseAtom `sepBy1` (spaces >> char ',' >> spaces)
+    args <- (parseAtom <|> string "_") `sepBy1` (spaces >> char ',' >> spaces)
     optional $ char ')'
     if ("_" `notElem` args)
       then fail "Not a curried function, didn't find an underscore (_)"
-      else return $ CurriedFunction name (map Unresolved args)
+      else return $ CurriedFunction name (map (\a -> if a == "_" then (Atom a) else (Unresolved a)) args)
 
 -- Sometimes, you want to pass in a function name somewhere. This function
 -- takes one argument, so you could pass it in like this:
