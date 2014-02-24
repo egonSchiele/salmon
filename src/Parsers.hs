@@ -8,19 +8,20 @@ import Utils
 import qualified Debug.Trace as D
 
 tryChoice parsers = choice $ map try parsers
+tr str = D.trace str (return ())
 
 -- | Parses a constructor (like the `Just a` part of `data Maybe = Nothing | Just a`)
-classParser :: RubyParser
-classParser = do
+parseClass :: RubyParser
+parseClass = do
     name <- string "data" >> whitespace >> parseAtom
     whitespace
     fields <- parseAtom `sepBy` whitespace
     return $ Class name fields
 
 -- | Parses something like `Just "val"`
-newParser :: [Ruby] -> RubyParser
-newParser cls = do
-    let classNames = map className cls
+parseNew :: CodeState -> RubyParser
+parseNew state = do
+    let classNames = map className (state ^. classes)
     className_ <- choice (map string classNames)
     char ' '
     params_ <- (many1 $ noneOf " =,") `sepBy1` space
@@ -28,26 +29,10 @@ newParser cls = do
 
 -- | assumes that this section contains only pure ruby.
 -- Always succeeds.
-idParser :: RubyParser
-idParser = do
-    line <- option "" (many1 anyChar)
-    return $ Atom line
-
-embeddedParser :: CodeState -> RubyParser
-embeddedParser state = do
-    let ops = state ^. operators
-        cls = state ^. classes
-        parsers = tryChoice [parseString, fmapParser, blockFunctionParser, compositionParser, curriedFunctionParser, newParser cls, infixCallParser, operatorUseParser ops]
-    front <- manyTill anyChar (try . lookAhead $ parsers)
-    D.trace ("front: " ++ (show front)) (return ())
-    ruby <- parsers
-    D.trace ("ruby: " ++ (show ruby)) (return ())
-    rest <- (embeddedParser state) <||> idParser
-    D.trace ("rest: " ++ (show rest)) (return ())
-    let rubies = filter (not . blankAtom) [Atom front, ruby, rest]
-    if length rubies == 1
-      then return $ head rubies
-      else return $ List rubies
+parseId :: RubyParser
+parseId = do
+    line <- option "" (many1 $ noneOf " \t\n")
+    return $ String line
 
 parseString :: RubyParser
 parseString = parseStringType '\'' <|> parseStringType '"'
@@ -57,36 +42,95 @@ parseStringType chr = do
     char chr
     x <- many (noneOf [chr])
     char chr
-    return $ String x
+    return . String $ [chr] ++ x ++ [chr]
+
+validChars = "_&?!."
 
 parseAtom :: Stream s m Char => ParsecT s u m String
-parseAtom = many1 $ alphaNum <|> (oneOf "-_&?!.")
+parseAtom = do
+    first <- alphaNum
+    rest <- many1 $ alphaNum <|> (oneOf validChars)
+    return $ first:rest
 
-parseList :: RubyParser
-parseList = liftM List $ sepBy parseLine whitespace
+maybeUnwrap parsed = return $
+                       if length parsed == 1
+                         then head parsed
+                         else List parsed
 
-parseBracketed :: RubyParser
-parseBracketed = do
+parseList :: CodeState -> RubyParser
+parseList state = do
+    parsed <- (parseExpr state) `sepBy` whitespace
+    tr ("parsed from parseList: " ++ show parsed)
+    case elemIndex (String "<$>") parsed of
+      Nothing -> maybeUnwrap parsed
+      Just i -> do
+        let front = take (i - 1) parsed
+            back  = takeEnd (length parsed - (i + 2)) parsed
+            prev  = parsed !! (i - 1)
+            next  = parsed !! (i + 1)
+            cur   = parsed !! i
+            newParsed = front ++ [next, String ".map", BlockFunction prev] ++ back
+        maybeUnwrap newParsed
+
+parseBracketed :: CodeState -> RubyParser
+parseBracketed state = do
     char '('
-    x <- parseList
+    x <- parseList state
     char ')'
-    return x
+    case x of
+      BlockFunction _ -> return x
+      _ -> return $ Parens x
 
-parseLine :: RubyParser
-parseLine = liftM Atom parseAtom
-       <|> parseString
-       <|> parseBracketed
+-- TODO embedded???
+parseLine :: CodeState -> RubyParser
+parseLine state = parseComment
+      <||> parseClass
+      <||> parseFunction
+      <||> parseOperatorDef
+      <||> parseEnum
+      <||> parseContract
+      <||> do
+        parsed <- parseList state
+        rest <- many anyChar
+        if rest /= ""
+          then return $ List [parsed, Unresolved rest]
+          else return $ parsed
 
-functionParser :: RubyParser
-functionParser = do
+parseExpr :: CodeState -> RubyParser
+parseExpr state = parseString
+      <||> parseBracketed state
+      <||> parseFunctionCall
+      <||> parseBlockFunction
+      <||> parseComposition
+      <||> parseCurriedFunction
+      <||> parseNew state
+      <||> parseInfixCall
+      <||> parseOperatorUse state
+      <||> liftM Atom parseAtom
+      <||> parseId
+
+-- If we have a function call with PARENTHESIS, the parseList function
+-- won't parse it correctly into an atom and an unresolved...so this
+-- function exists. DON'T REMOVE THE char '('...it should only parse
+-- function calls that use parenthesis!
+parseFunctionCall :: RubyParser
+parseFunctionCall = do
+    period <- option "" (string ".")
+    name <- parseAtom
+    char '('
+    rest <- many1 anyChar
+    return $ List [Atom $ period ++ name, Unresolved $ "(" ++ rest]
+
+parseFunction :: RubyParser
+parseFunction = do
     name <- parseAtom
     args <- parseAtom `endBy` whitespace
     string ":=" >> whitespace
     body_ <- many1 anyChar
     return $ Function name args (Unresolved body_)
 
-infixCallParser :: RubyParser
-infixCallParser = do
+parseInfixCall :: RubyParser
+parseInfixCall = do
     left <- manyTill anyChar (try $ char ' ')
     name_ <- between (char '`') (char '`') (many1 alphaNum)
     char ' '
@@ -100,8 +144,8 @@ infixCallParser = do
 -- Now you can use `2 <+> 3` instead of `add(2, 3)`.
 --
 -- This is what parses the `op <+> add` statement.
-operatorParser :: RubyParser
-operatorParser = do
+parseOperatorDef :: RubyParser
+parseOperatorDef = do
     string "op "
     op <- manyTill anyChar (try $ char ' ')
     alphaName_ <- many1 anyChar
@@ -111,43 +155,51 @@ operatorParser = do
 -- whatever. Checks to see if its used anywhere, so it can get substituted
 -- with the correct alphaName
 -- TODO almost exactly like `infixCallParser`, refactor?
-operatorUseParser :: [Ruby] -> RubyParser
-operatorUseParser ops = do
-    let opNames = map operator ops
+parseOperatorUse :: CodeState -> RubyParser
+parseOperatorUse state = do
+    let ops = state ^. operators
+        opNames = map operator ops
     left <- manyTill anyChar (try $ char ' ')
     opName <- choice (map string opNames)
     char ' '
     right <- many1 anyChar
     return $ InfixCall (Unresolved left) (fromJust $ findAlphaName opName ops) (Unresolved right)
 
-enumParser :: RubyParser
-enumParser = do
+parseEnum :: RubyParser
+parseEnum = do
     string "enum "
     options <- parseAtom `sepBy1` (string " | ")
     return $ Enum options
 
-contractParser :: RubyParser
-contractParser = do
+parseContract :: RubyParser
+parseContract = do
     parseAtom >> whitespace >> string "::" >> whitespace
     params <- (many1 $ noneOf " ") `sepBy1` (whitespace >> string "->" >> whitespace)
     return $ Contract (init params) (last params)
 
-commentParser :: RubyParser
-commentParser = do
+parseComment :: RubyParser
+parseComment = do
     leadingSpace <- option "" (many1 space)
     char '#'
     rest <- many1 anyChar
     return $ Atom (leadingSpace ++ "#" ++ rest)
 
-blockFunctionParser :: RubyParser
-blockFunctionParser = do
-    oneOf "( " >> spaces >> string "&"
-    curriedFunc <- compositionParser <||> curriedFunctionParser <||> curriedFunctionSingleArgParser
-    spaces >> (optional $ char ')')
+-- A block function looks like this: `&incr` i.e. a part of
+-- `(1..10).map(&incr)`. This can optionally be enclosed in parens or not:
+-- `&incr` and `&(incr . incr)` are both valid. However, if, and only if,
+-- there is an opening paren, there must be a closing paren.
+parseBlockFunction :: RubyParser
+parseBlockFunction = do
+    char '&'
+    openingParen <- optionMaybe $ char '('
+    curriedFunc <- parseComposition <||> parseCurriedFunction <||> parseCurriedFunctionSingleArg
+    case openingParen of
+      Nothing -> return ()
+      Just _ -> char ')' >> return ()
     return $ BlockFunction curriedFunc
 
-curriedFunctionParser :: RubyParser
-curriedFunctionParser = do
+parseCurriedFunction :: RubyParser
+parseCurriedFunction = do
     name <- parseAtom
     (optional $ char '(') <|> whitespace
     args <- parseAtom `sepBy1` (spaces >> char ',' >> spaces)
@@ -176,17 +228,10 @@ curriedFunctionParser = do
 -- identifier and makes a curried function out of it, where the curried
 -- function just takes one argument. This is the kind of shit you have to
 -- do in ruby.
-curriedFunctionSingleArgParser :: RubyParser
-curriedFunctionSingleArgParser = do
+parseCurriedFunctionSingleArg :: RubyParser
+parseCurriedFunctionSingleArg = do
     name <- parseAtom
     return $ CurriedFunction name [Atom "_"]
-
-fmapParser :: RubyParser
-fmapParser = do
-    function <- manyTill (noneOf "<") (string " <$> ")
-    item <- many1 anyChar
-    let str = printf "%s.map(&%s)" item function
-    return $ Unresolved str
 
 -- add a b := a + b
 
@@ -194,8 +239,8 @@ fmapParser = do
 --   a + Composition {functionNames = ["b"], argument = Nothing}
 -- end
 
-compositionParser :: RubyParser
-compositionParser = do
+parseComposition :: RubyParser
+parseComposition = do
     names <- parseAtom `sepBy1` (spaces >> char '.' >> spaces)
     if length names < 2
       then fail "Not a composition since there's only one function!!"

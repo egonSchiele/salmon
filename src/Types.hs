@@ -18,6 +18,7 @@ data Ruby = Class {
             | Atom String
             | String String
             | List [Ruby]
+            | Parens Ruby -- parenthesized expression
             | Function {
                 functionName :: String,
                 functionArgs :: [String],
@@ -94,7 +95,8 @@ instance ConvertToRuby Ruby where
 
   toRuby (Atom str) = str
   toRuby (String str) = str
-  toRuby (List xs) = join " " $ map toRuby xs
+  toRuby (List xs) = concat $ map toRuby xs
+  toRuby (Parens x) = printf "(%s)" (toRuby x)
 
   -- if the body is a curried function, this
   -- function needs to take more params to pass
@@ -122,6 +124,7 @@ instance ConvertToRuby Ruby where
   toRuby (Contract inp out) = printf "Contract %s => %s" (join ", " inp) out
   toRuby c@(CurriedFunction cfName cfArgs) = error $ "Curried functions can only be used as a block, or if you assign it a name by making it into a new function. You can't use curried functions in function composition etc. We don't make lambdas out of curried functions simply because it doesn't look like idiomatic Ruby. You're seeing this because you might have tried to make this curried function into a lambda: " ++ show c
 
+  toRuby (BlockFunction (Parens x)) = toRuby $ BlockFunction x
   toRuby (BlockFunction c@(Composition funcs Nothing)) = printf " { |a| %s }" (makeCompositionString funcs (Atom "a"))
   toRuby (BlockFunction c@(Composition funcs (Just arg))) = error $ "You provided a composed function to a block, but then gave it an argument! " ++ show c
   toRuby (BlockFunction c@(CurriedFunction cfName cfArgs)) = printf " { |%s| %s(%s) }" (join "," curryArgs) cfName (join ", " (map toRuby (blend cfArgs curryArgs)))

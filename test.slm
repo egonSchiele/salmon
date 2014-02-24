@@ -1,1 +1,2 @@
-incr . incr <$> (1..10)
+(1..10).map(&incr)
+(1..10).map(&(incr . incr))

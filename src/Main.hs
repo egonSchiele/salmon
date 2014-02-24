@@ -22,7 +22,7 @@ isUnresolved _ = False
 parseRuby :: Ruby -> StateT CodeState IO Ruby
 parseRuby (Unresolved line) = do
   state <- get
-  case parse (commentParser <||> classParser <||> functionParser <||> operatorParser <||> enumParser <||> contractParser <||> (embeddedParser state) <||> idParser) "" line of
+  case parse (parseLine state) "" line of
       Left err -> error (show err)
       Right result -> do
                 maybeModifyState result
@@ -52,6 +52,10 @@ parseRuby (New c params_) = do
       newParams <- mapM parseRuby params_
       return $ New c newParams
     else return $ New c params_
+
+parseRuby (Parens x) = do
+    newX <- parseRuby x
+    return $ Parens newX
 
 parseRuby (List xs) = do
     newXs <- mapM parseRuby xs
