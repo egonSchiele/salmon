@@ -281,7 +281,7 @@ parseCurriedFunctionSingleArg = do
 
 parseComposition :: RubyParser
 parseComposition = do
-    names <- parseAtom `sepBy1` (spaces >> char '.' >> spaces)
+    names <- parseAtom `sepBy1` (try $ spaces >> char '.' >> spaces)
     if length names < 2
       then fail "Not a composition since there's only one function!!"
       else return $ Composition names Nothing

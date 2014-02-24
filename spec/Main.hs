@@ -14,7 +14,7 @@ type Expected = String
 checkParser :: RubyParser -> RubyString -> Expected -> Bool
 checkParser parser line expected = case parse parser "" line of
                                Left err -> error (show err)
-                               Right actual -> (toRuby actual) == expected
+                               Right actual -> if (toRuby actual) == expected then True else error (toRuby actual)
 
 check = checkWithState defaultState
 
@@ -30,9 +30,9 @@ bulkCheck checks = forM_ checks $ \(label, ruby, expected) -> do
                         check ruby expected
 
 main = hspec $ do
-  -- describe "currying" $ do
-  --     it "check currying parser" $ do
-  --       checkParser parseCurriedFunction "add(:foo, _)" "add(:foo, a)"
+  -- describe "composition" $ do
+  --     it "check composition parser" $ do
+  --       checkParser parseComposition "a . b . c " "a(b(c(x)))"
     
   describe "general parsers" $ do
     bulkCheck $
@@ -47,12 +47,12 @@ main = hspec $ do
     
   describe "function composition" $ do
       bulkCheck $
-        [("with apply in a function", "parse file := (JSON.parse . File.read) $ file", "def parse(file)\n  JSON.parse(File.read(file))\nend"),
+        [("with apply in a function", "parse file := JSON.parse . File.read $ file", "def parse(file)\n  JSON.parse(File.read(file))\nend"),
          ("in a function", "parse := JSON.parse . File.read", "def parse(a)\n  JSON.parse(File.read(a))\nend"),
-         ("with apply", "(JSON.parse . File.read) $ filename", "JSON.parse(File.read(filename))"),
-         ("with more than two functions", "(a . b . c) $ 5", "a(b(c(5)))"),
+         ("with apply", "JSON.parse . File.read $ filename", "JSON.parse(File.read(filename))"),
+         ("with more than two functions", "a . b . c $ 5", "a(b(c(5)))"),
          ("in a block", "(1..10).map(&(incr . incr))", "(1..10).map { |a| incr(incr(a)) }"),
-         ("with fmap", "(incr . incr) <$> (1..10)", "(1..10).map { |a| incr(incr(a)) }"),
+         ("with fmap", "incr . incr <$> (1..10)", "(1..10).map { |a| incr(incr(a)) }"),
          ("functions that take blocks as an arg", "map list &blk := list.map(&blk.call)", "def map(list, &blk)\n  list.map { |a| blk.call(a) }\nend")
         ]
   describe "currying" $ do
