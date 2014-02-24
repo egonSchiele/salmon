@@ -86,10 +86,10 @@ def factorial n
 end
 ```
 
-### Function composition
+### Function composition - DONE
 
 ```
-JSON.parse . File.read . File.basename $ file
+(JSON.parse . File.read . File.basename) $ file
 ```
 
 becomes
@@ -98,15 +98,9 @@ becomes
 JSON.parse(File.read(File.basename(file)))
 ```
 
-TODO how does this look in a block?
-
 ```
-filenames.map(JSON.parse . File.read . File.basename)
-# or
 filenames.map(&(JSON.parse . File.read . File.basename))
 ```
-
-??
 
 ### Currying - DONE
 

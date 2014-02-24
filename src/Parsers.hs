@@ -8,7 +8,8 @@ import Utils
 import qualified Debug.Trace as D
 
 tryChoice parsers = choice $ map try parsers
-tr str = D.trace str (return ())
+tr str = return ()
+-- tr str = D.trace str (return ())
 
 -- | Parses a constructor (like the `Just a` part of `data Maybe = Nothing | Just a`)
 parseClass :: RubyParser
@@ -276,12 +277,12 @@ parseRuby (Unresolved line) = do
       Left err -> error (show err)
       Right result -> do
                 maybeModifyState result
-                liftIO $ print result
+                tr $ print result
                 parseRuby result
 
 -- debugging
 parseRuby i@(Atom line) = do
-    liftIO $ print i
+    tr $ print i
     return i
 
 parseRuby (CurriedFunction n cfArgs) = do
