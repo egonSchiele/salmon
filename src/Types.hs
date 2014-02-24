@@ -101,11 +101,14 @@ instance ConvertToRuby Ruby where
   -- if the body is a curried function, this
   -- function needs to take more params to pass
   -- in to the curried function.
-  toRuby (Function name_ args_ body_) = printf "def %s%s\n  %s\nend" name_ argsStr bodyStr
+  toRuby (Function name_ args_ body__) = printf "def %s%s\n  %s\nend" name_ argsStr bodyStr
     -- placeholderArgsFor will make args for currying, OR args for function
     -- composition. None of the functions in the function composition can
     -- be curried, so don't need to worry about that!
-    where extraArgs = placeholderArgsFor body_ args_
+    where body_ = case body__ of
+                    (Parens ruby) -> ruby
+                    x -> x
+          extraArgs = placeholderArgsFor body_ args_
           allArgs = args_ ++ extraArgs
           argsStr = if null allArgs
                       then ""

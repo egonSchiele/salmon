@@ -257,3 +257,64 @@ parseComposition = do
     if length names < 2
       then fail "Not a composition since there's only one function!!"
       else return $ Composition names Nothing
+
+
+
+maybeModifyState o@(Operator _ _) = modify $ over operators (o:)
+maybeModifyState c@(Class _ _) = modify $ over classes (c:)
+maybeModifyState c@(Contract _ _) = modify $ over headExtras (union [Contracts])
+maybeModifyState x = return ()
+
+-- | This is what computes the AST. The main method is the one that parses
+-- `Unresolved` objects. There are others which will take an existing Ruby
+-- object, and check if any parts of it are unresolved. If so, it feeds
+-- them back into `parseRuby`.
+parseRuby :: Ruby -> StateT CodeState IO Ruby
+parseRuby (Unresolved line) = do
+  state <- get
+  case parse (parseLine state) "" line of
+      Left err -> error (show err)
+      Right result -> do
+                maybeModifyState result
+                liftIO $ print result
+                parseRuby result
+
+-- debugging
+parseRuby i@(Atom line) = do
+    liftIO $ print i
+    return i
+
+parseRuby (CurriedFunction n cfArgs) = do
+    newCfArgs <- mapM parseRuby cfArgs
+    return $ CurriedFunction n newCfArgs
+
+parseRuby (Composition funcs (Just arg)) = do
+    newArg <- parseRuby arg
+    return $ Composition funcs (Just newArg)
+
+parseRuby (BlockFunction f) = do
+    newF <- parseRuby f
+    return $ BlockFunction newF
+
+parseRuby (New c params_) = do
+    newParams <- mapM parseRuby params_
+    return $ New c newParams
+
+parseRuby (Parens x) = do
+    newX <- parseRuby x
+    return $ Parens newX
+
+parseRuby (List xs) = do
+    newXs <- mapM parseRuby xs
+    return $ List newXs
+
+parseRuby (Function n a b@(Unresolved _)) = do
+    newBody <- parseRuby b
+    return $ Function n a newBody
+
+parseRuby (InfixCall left name_ right) = do
+    newLeft <- parseRuby left
+    newRight <- parseRuby right
+    return $ InfixCall newLeft name_ newRight
+
+parseRuby x = return x
