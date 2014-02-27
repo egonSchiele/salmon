@@ -64,7 +64,7 @@ parseAtom = do
 parseCompositionMethod :: Stream s m Char => ParsecT s u m String
 parseCompositionMethod = do
     first <- char '.'
-    rest <- many $ alphaNum <|> (oneOf validChars)
+    rest <- many1 $ alphaNum <|> (oneOf validChars)
     return $ first:rest
 
 maybeUnwrap parsed = if length parsed == 1

@@ -42,9 +42,9 @@ main = hspec $ do
       ]
   describe "functions" $ do
     bulkCheck $
-      [("function", "add a b := a + b", "def add(a, b)\n  a + b\nend"),
-       ("sum(.to_f . .chomp <$> File.readlines(filename))", "sum(File.readlines(filename).map { |a| a.chomp.to_f })"),
-       ("sum $ .to_f . .chomp <$> File.readlines(filename)", "sum(File.readlines(filename).map { |a| a.chomp.to_f })")
+      [("simple definition", "add a b := a + b", "def add(a, b)\n  a + b\nend"),
+       ("call with an fmap inside the call", "sum(.to_f . .chomp <$> File.readlines(filename))", "sum(File.readlines(filename).map { |a| a.chomp.to_f })"),
+       ("call with apply instead of parenthesis", "sum $ .to_f . .chomp <$> File.readlines(filename)", "sum(File.readlines(filename).map { |a| a.chomp.to_f })")
       ]
     
   describe "function composition" $ do
