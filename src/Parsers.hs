@@ -95,18 +95,17 @@ checkForFmap parsed = case elemIndex (String "<$>") parsed of
 checkForApply parsed = case elemIndex (String "$") parsed of
                          Nothing -> parsed
                          Just i -> case prev of
-                                     Parens (Composition n a) -> front ++ [Composition n (Just next)] ++ back
-                                     Composition n a -> front ++ [Composition n (Just next)] ++ back
-                                     Atom funcName -> front ++ [Composition [funcName] (Just next)] ++ back
-                                     String funcName -> front ++ [Composition [funcName] (Just next)] ++ back
+                                     Parens (Composition n a) -> front ++ [Composition n (Just $ List rest)]
+                                     Composition n a -> front ++ [Composition n (Just $ List rest)]
+                                     Atom funcName -> front ++ [Composition [funcName] (Just $ List rest)]
+                                     String funcName -> front ++ [Composition [funcName] (Just $ List rest)]
                                      _ -> parsed
                           -- for all of these, we actually skip the two
                           -- values around <$> because those are spaces
                           -- that we added ourselves.
                            where front = take (i - 2) parsed
-                                 back  = takeEnd (length parsed - (i + 3)) parsed
+                                 rest  = takeEnd (length parsed - (i + 2)) parsed
                                  prev  = parsed !! (i - 2)
-                                 next  = parsed !! (i + 2)
                                  cur   = parsed !! i
 
 parseList :: CodeState -> RubyParser
