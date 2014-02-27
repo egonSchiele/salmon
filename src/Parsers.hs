@@ -8,8 +8,8 @@ import Utils
 import qualified Debug.Trace as D
 
 tryChoice parsers = choice $ map try parsers
-tr str = return ()
--- tr str = D.trace str (return ())
+-- tr str = return ()
+tr str = D.trace str (return ())
 
 -- | Parses a constructor (like the `Just a` part of `data Maybe = Nothing | Just a`)
 parseClass :: RubyParser
@@ -97,6 +97,8 @@ checkForApply parsed = case elemIndex (String "$") parsed of
                          Just i -> case prev of
                                      Parens (Composition n a) -> front ++ [Composition n (Just next)] ++ back
                                      Composition n a -> front ++ [Composition n (Just next)] ++ back
+                                     Atom funcName -> front ++ [Composition [funcName] (Just next)] ++ back
+                                     String funcName -> front ++ [Composition [funcName] (Just next)] ++ back
                                      _ -> parsed
                           -- for all of these, we actually skip the two
                           -- values around <$> because those are spaces
