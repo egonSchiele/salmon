@@ -69,7 +69,12 @@ placeholderArgsFor c@(Composition _ Nothing) args_ = take 1 (alphabets \\ args_)
 placeholderArgsFor _ _ = []
 
 makeCompositionString [] arg = toRuby arg
-makeCompositionString (f:funcs) arg = printf "%s(%s)" f (makeCompositionString funcs arg)
+
+-- if the function name starts with a period, make it a method call on the 
+-- object instead of a function call.
+makeCompositionString (f:funcs) arg
+  | f !! 0 == '.' = printf "%s%s" (makeCompositionString funcs arg) f
+  | otherwise = printf "%s(%s)" f (makeCompositionString funcs arg)
 
 -- blend the curried function's args and our made up args. So if
 -- the curried function's arg is an underscore (_), then use

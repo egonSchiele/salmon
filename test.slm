@@ -1,2 +1,5 @@
-data Maybe val
-JSON.parse . File.read . File.basename <$> Maybe file
+sum list := list == [] ? 0 : list[0] + sum(list[1, list.size])
+
+res = .to_f . .chomp <$> File.readlines("/Users/adit/expenses.txt")
+
+p sum(res)

@@ -60,6 +60,13 @@ parseAtom = do
     rest <- many $ alphaNum <|> (oneOf validChars)
     return $ first:rest
 
+-- return something like ".hello"...used in function composition.
+parseCompositionMethod :: Stream s m Char => ParsecT s u m String
+parseCompositionMethod = do
+    first <- char '.'
+    rest <- many $ alphaNum <|> (oneOf validChars)
+    return $ first:rest
+
 maybeUnwrap parsed = if length parsed == 1
                          then head parsed
                          else List parsed
@@ -281,12 +288,10 @@ parseCurriedFunctionSingleArg = do
 
 parseComposition :: RubyParser
 parseComposition = do
-    names <- parseAtom `sepBy1` (try $ spaces >> char '.' >> spaces)
+    names <- (parseAtom <|> parseCompositionMethod) `sepBy1` (try $ spaces >> char '.' >> spaces)
     if length names < 2
       then fail "Not a composition since there's only one function!!"
       else return $ Composition names Nothing
-
-
 
 maybeModifyState o@(Operator _ _) = modify $ over operators (o:)
 maybeModifyState c@(Class _ _) = modify $ over classes (c:)
