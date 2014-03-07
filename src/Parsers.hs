@@ -29,10 +29,10 @@ parseNew state = do
     return $ New className_ (map Unresolved params_)
 
 -- | assumes that this section contains only pure ruby.
--- Always succeeds.
+-- Always succeeds if there is content
 parseId :: RubyParser
 parseId = do
-    line <- option "" (many1 $ noneOf " \t\n")
+    line <- many1 $ noneOf " \t\n"
     return $ String line
 
 parseString :: RubyParser
@@ -113,9 +113,9 @@ checkForApply parsed = case elemIndex (String "$") parsed of
 
 parseList :: CodeState -> RubyParser
 parseList state = do
-    parsed <- (parseExpr state) `sepBy` whitespace
+    parsed <- many1 $ parseExpr state
     tr ("parsed from parseList: " ++ show parsed)
-    return $ maybeUnwrap . checkForApply . checkForFmap . intersperse (String " ") $ parsed
+    return $ maybeUnwrap . checkForApply . checkForFmap $ parsed
 
 parseBracketed :: CodeState -> RubyParser
 parseBracketed state = do
@@ -142,6 +142,11 @@ parseLine state = parseComment
           then return $ List [parsed, Unresolved rest]
           else return $ parsed
 
+parseWhitespace :: RubyParser
+parseWhitespace = do
+    ws <- many1 $ oneOf " \t\n"
+    return $ String ws
+
 parseExpr :: CodeState -> RubyParser
 parseExpr state = parseString
       <||> parseBracketed state
@@ -153,6 +158,7 @@ parseExpr state = parseString
       <||> parseInfixCall
       <||> parseOperatorUse state
       <||> liftM Atom parseAtom
+      <||> parseWhitespace
       <||> parseId
 
 -- If we have a function call with PARENTHESIS, the parseList function
