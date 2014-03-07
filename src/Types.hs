@@ -27,7 +27,7 @@ data Ruby = Class {
             | CaseFunction { -- used with pattern matching. A function case is something like fact 1 := 1
                 caseFunctionName :: String,
                 caseFunctionArgs :: [String],
-                caseBody :: Ruby
+                caseBody :: String
               }
             | InfixCall {
                 leftArg :: Ruby,
@@ -162,7 +162,7 @@ data CodeState = CodeState {
 
 makeLenses  ''CodeState
 
-defaultState = CodeState [] [] [] []
+defaultState = CodeState [] [] [] [] []
 
 type RubyParser = Stream s m Char => ParsecT s u m Ruby
 

@@ -8,8 +8,8 @@ import Utils
 import qualified Debug.Trace as D
 
 tryChoice parsers = choice $ map try parsers
-tr str = return ()
--- tr str = D.trace str (return ())
+-- tr str = return ()
+tr str = D.trace str (return ())
 
 -- | Parses a constructor (like the `Just a` part of `data Maybe = Nothing | Just a`)
 parseClass :: RubyParser
@@ -50,9 +50,12 @@ validChars = "_&?!."
 -- parses a function arg, like `a`, `str`, `&blk` or `*args`
 parseFunctionArg :: Stream s m Char => ParsecT s u m String
 parseFunctionArg = do
-    first <- alpha <|> oneOf "*&"
+    first <- letter <|> oneOf "*&"
     rest <- many alphaNum
     return $ first:rest
+
+parseCaseFunctionArg :: Stream s m Char => ParsecT s u m String
+parseCaseFunctionArg = many1 $ alphaNum <|> oneOf "*&'\""
 
 parseAtom :: Stream s m Char => ParsecT s u m String
 parseAtom = do
@@ -128,6 +131,7 @@ parseLine :: CodeState -> RubyParser
 parseLine state = parseComment
       <||> parseClass
       <||> parseFunction
+      <||> parseCaseFunction
       <||> parseOperatorDef
       <||> parseEnum
       <||> parseContract
@@ -167,10 +171,10 @@ parseCaseFunction :: RubyParser
 parseCaseFunction = do
     name <- parseAtom
     whitespace
-    args <- (many1 $ noneOf " ") `endBy` whitespace
+    args <- parseCaseFunctionArg `endBy` whitespace
     string ":=" >> whitespace
     body_ <- many1 anyChar
-    return $ CaseFunction name args (Unresolved body_)
+    return $ CaseFunction name args body_
 
 parseFunction :: RubyParser
 parseFunction = do
@@ -322,7 +326,7 @@ parseRuby (Unresolved line) = do
                 newResult <- parseRuby result
                 maybeModifyState newResult
                 tr $ show result
-                newResult
+                return newResult
 
 -- debugging
 parseRuby i@(Atom line) = do
@@ -353,22 +357,14 @@ parseRuby (List xs) = do
     newXs <- mapM parseRuby xs
     return $ List newXs
 
-combineFuncBodies newFunction@(Function n a body) caseFunc = 
-
-parseRuby (Function n a b@(Unresolved _)) = do
-    newBody <- parseRuby b
-
+parseRuby func@(Function n _ _) = do
     -- check if we have a case for this function
     state <- get
     let functions_ = state ^. functions
-        cases = filter ((== n) . caseFunctionName) functions
-        newFunction = Function n a newBody
-        forM_ cases $ \caseFunc -> do
-    return $ 
-
-parseRuby (CaseFunction n a b@(Unresolved _)) = do
-    newBody <- parseRuby b
-    return $ CaseFunction n a newBody
+        cases = filter ((== n) . caseFunctionName) functions_
+        combinedFunction = foldl combineFuncBodies func cases
+    newBody <- parseRuby $ body combinedFunction
+    return $ combinedFunction { body = newBody }
 
 parseRuby (InfixCall left name_ right) = do
     newLeft <- parseRuby left
@@ -380,3 +376,8 @@ parseRuby x = return x
 isAtom str = case parse parseAtom "" str of
                Left _ -> False
                Right _ -> True
+
+combineFuncBodies newFunction@(Function n a (Unresolved body)) caseFunc@(CaseFunction cn ca cbody) = Function n a (Unresolved newBody)
+    where newBody = printf "if %s\n%s\nelse\n%s\nend\n" cond cbody body
+          cond = join " && " $ map (\(a1, a2) -> a1 ++ " == " ++ a2) zippedArgs
+          zippedArgs = zip a ca
