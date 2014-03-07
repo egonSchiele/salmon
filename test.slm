@@ -1,1 +1,5 @@
-sum $ chomp <$> File.readlines(file)
+fact :: Num -> Num
+fact 1 := 1
+fact x := x * fact(x - 1)
+
+p $ fact 5

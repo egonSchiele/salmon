@@ -24,6 +24,11 @@ data Ruby = Class {
                 functionArgs :: [String],
                 body :: Ruby
               }
+            | CaseFunction { -- used with pattern matching. A function case is something like fact 1 := 1
+                caseFunctionName :: String,
+                caseFunctionArgs :: [String],
+                caseBody :: Ruby
+              }
             | InfixCall {
                 leftArg :: Ruby,
                 infixFunctionName :: String,
@@ -103,6 +108,8 @@ instance ConvertToRuby Ruby where
   toRuby (List xs) = concat $ map toRuby xs
   toRuby (Parens x) = printf "(%s)" (toRuby x)
 
+  toRuby (CaseFunction _ _ _) = ""
+
   -- if the body is a curried function, this
   -- function needs to take more params to pass
   -- in to the curried function.
@@ -149,7 +156,8 @@ data CodeState = CodeState {
                    _operators :: [Ruby],
                    _classes :: [Ruby],
                    _code :: [Ruby],
-                   _headExtras :: [Extra]
+                   _headExtras :: [Extra],
+                   _functions :: [Ruby]
 }
 
 makeLenses  ''CodeState

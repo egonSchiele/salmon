@@ -8,8 +8,8 @@ import Utils
 import qualified Debug.Trace as D
 
 tryChoice parsers = choice $ map try parsers
--- tr str = return ()
-tr str = D.trace str (return ())
+tr str = return ()
+-- tr str = D.trace str (return ())
 
 -- | Parses a constructor (like the `Just a` part of `data Maybe = Nothing | Just a`)
 parseClass :: RubyParser
@@ -47,10 +47,10 @@ parseStringType chr = do
 
 validChars = "_&?!."
 
--- parses &blk and *args
-parseSpecialArg :: Stream s m Char => ParsecT s u m String
-parseSpecialArg = do
-    first <- alphaNum <|> oneOf "*&"
+-- parses a function arg, like `a`, `str`, `&blk` or `*args`
+parseFunctionArg :: Stream s m Char => ParsecT s u m String
+parseFunctionArg = do
+    first <- alpha <|> oneOf "*&"
     rest <- many alphaNum
     return $ first:rest
 
@@ -163,11 +163,20 @@ parseFunctionCall = do
     rest <- many1 anyChar
     return $ List [Atom $ period ++ name, Unresolved $ "(" ++ rest]
 
+parseCaseFunction :: RubyParser
+parseCaseFunction = do
+    name <- parseAtom
+    whitespace
+    args <- (many1 $ noneOf " ") `endBy` whitespace
+    string ":=" >> whitespace
+    body_ <- many1 anyChar
+    return $ CaseFunction name args (Unresolved body_)
+
 parseFunction :: RubyParser
 parseFunction = do
     name <- parseAtom
     whitespace
-    args <- (parseAtom <|> parseSpecialArg) `endBy` whitespace
+    args <- parseFunctionArg `endBy` whitespace
     string ":=" >> whitespace
     body_ <- many1 anyChar
     return $ Function name args (Unresolved body_)
@@ -297,6 +306,7 @@ parseComposition = do
 maybeModifyState o@(Operator _ _) = modify $ over operators (o:)
 maybeModifyState c@(Class _ _) = modify $ over classes (c:)
 maybeModifyState c@(Contract _ _) = modify $ over headExtras (union [Contracts])
+maybeModifyState f@(CaseFunction name args body) = modify $ over functions (f:)
 maybeModifyState x = return ()
 
 -- | This is what computes the AST. The main method is the one that parses
@@ -309,9 +319,10 @@ parseRuby (Unresolved line) = do
   case parse (parseLine state) "" line of
       Left err -> error (show err)
       Right result -> do
-                maybeModifyState result
+                newResult <- parseRuby result
+                maybeModifyState newResult
                 tr $ show result
-                parseRuby result
+                newResult
 
 -- debugging
 parseRuby i@(Atom line) = do
@@ -342,9 +353,22 @@ parseRuby (List xs) = do
     newXs <- mapM parseRuby xs
     return $ List newXs
 
+combineFuncBodies newFunction@(Function n a body) caseFunc = 
+
 parseRuby (Function n a b@(Unresolved _)) = do
     newBody <- parseRuby b
-    return $ Function n a newBody
+
+    -- check if we have a case for this function
+    state <- get
+    let functions_ = state ^. functions
+        cases = filter ((== n) . caseFunctionName) functions
+        newFunction = Function n a newBody
+        forM_ cases $ \caseFunc -> do
+    return $ 
+
+parseRuby (CaseFunction n a b@(Unresolved _)) = do
+    newBody <- parseRuby b
+    return $ CaseFunction n a newBody
 
 parseRuby (InfixCall left name_ right) = do
     newLeft <- parseRuby left
@@ -352,3 +376,7 @@ parseRuby (InfixCall left name_ right) = do
     return $ InfixCall newLeft name_ newRight
 
 parseRuby x = return x
+
+isAtom str = case parse parseAtom "" str of
+               Left _ -> False
+               Right _ -> True
