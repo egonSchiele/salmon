@@ -32,7 +32,7 @@ parseNew state = do
 -- Always succeeds if there is content
 parseId :: RubyParser
 parseId = do
-    line <- many1 $ noneOf " \t\n"
+    line <- many1 $ noneOf " \t\n()"
     return $ String line
 
 parseString :: RubyParser
@@ -137,7 +137,7 @@ parseLine state = parseComment
       <||> parseContract
       <||> do
         parsed <- parseList state
-        rest <- many anyChar
+        rest <- many anyChar -- need to make this a non-greedy parser so that parseBracketed still gets the end parenthesis that it is looking for
         if rest /= ""
           then return $ List [parsed, Unresolved rest]
           else return $ parsed

@@ -8,6 +8,8 @@ convert infile outfile = do
     contents <- liftIO $ lines <$> readFile infile
     rubyLines <- forM (map Unresolved contents) parseRuby
     state <- get
+    tr "final lines were:"
+    mapM_ (tr . show) rubyLines
     let headContents = toRuby <$> (state ^. headExtras)
         bodyContents = toRuby <$> (concatRuby rubyLines)
         newContents = headContents ++ bodyContents
