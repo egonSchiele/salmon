@@ -8,8 +8,8 @@ import Utils
 import qualified Debug.Trace as D
 
 tryChoice parsers = choice $ map try parsers
--- tr str = return ()
-tr str = D.trace str (return ())
+tr str = return ()
+-- tr str = D.trace str (return ())
 
 -- | Parses a constructor (like the `Just a` part of `data Maybe = Nothing | Just a`)
 parseClass :: RubyParser
@@ -388,4 +388,4 @@ isAtom str = case parse parseAtom "" str of
 combineFuncBodies newFunction@(Function n a (Unresolved body)) caseFunc@(CaseFunction cn ca cbody) = Function n a (Unresolved newBody)
     where newBody = printf "if %s\n    %s\n  else\n    %s\n  end" cond cbody body
           cond = join " && " $ map (\(a1, a2) -> a1 ++ " == " ++ a2) zippedArgs
-          zippedArgs = zip a ca
+          zippedArgs = filter (\(a1, a2) -> (a1 /= a2) && (a2 /= "_")) $ zip a ca

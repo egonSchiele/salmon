@@ -29,6 +29,22 @@ bulkCheck checks = forM_ checks $ \(label, ruby, expected) -> do
                       it label $ do
                         check ruby expected
 
+mapFunc :: String -> StateT CodeState IO Ruby
+mapFunc line = parseRuby (Unresolved line)
+
+combine acc line = acc >> parseRuby (Unresolved line)
+
+-- good for checking things that take place over multiple lines, like 
+-- operator definitions or function pattern matching
+multiLineCheck :: [String] -> String -> Bool
+multiLineCheck codeLines expected = do
+    let func = foldl combine (parseRuby (Unresolved (head codeLines))) (tail codeLines)
+        actual = toRuby . fst . unsafePerformIO $ runStateT func defaultState
+    if actual == expected
+        then True
+        else error ("expected: " ++ expected ++ "\ngot: " ++ actual)
+
+
 main = hspec $ do
   -- describe "composition" $ do
   --     it "check composition parser" $ do
@@ -78,17 +94,20 @@ main = hspec $ do
       bulkCheck $
         [("using a function as infix", "1 `add` 2", "add(1, 2)")]
       it "defining a custom operator and using it" $ do
-        let func = do
-              parseRuby (Unresolved "op <+> add")
-              parseRuby (Unresolved "a <+> b")
-            actual = toRuby . fst . unsafePerformIO $ runStateT func defaultState
-            expected = "add(a, b)"
-        if actual == expected
-            then True
-            else error ("expected: " ++ expected ++ "\ngot: " ++ actual)
+        multiLineCheck ["op <+> add",
+                        "a <+> b"] "add(a, b)"
 
   describe "mixing ruby and salmon" $ do
       bulkCheck $
         [("assigning vars", "a = incr <$> (1..10)", "a = (1..10).map { |a| incr(a) }"),
          ("functions with fmap", "p incr <$> (1..10)", "p (1..10).map { |a| incr(a) }")
         ]
+
+  describe "pattern matching for functions" $ do
+    it "simple matching" $ do
+        multiLineCheck ["fact 1 := 1",
+                        "fact x := x * fact(x - 1)"] "def fact(x)\n  if x == 1\n    1\n  else\n    x * fact(x - 1)\n  end\nend"
+
+    it "pattern matching on one var only" $ do
+        multiLineCheck ["fact 1 y := 1",
+                        "fact x y := x * fact(x - 1)"] "def fact(x, y)\n  if x == 1\n    1\n  else\n    x * fact(x - 1)\n  end\nend"
