@@ -177,6 +177,7 @@ findAlphaName op (x:xs) = if (operator x == op)
 concatRuby :: [Ruby] -> [Ruby]
 concatRuby [] = []
 concatRuby ((Operator _ _):xs) = concatRuby xs
+concatRuby ((CaseFunction _ _ _):xs) = concatRuby xs
 concatRuby (x:xs) = x:(concatRuby xs)
 
 blankAtom (Atom "") = True
