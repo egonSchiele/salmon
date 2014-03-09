@@ -319,11 +319,13 @@ maybeModifyState c@(Contract _ _) = modify $ over headExtras (union [Contracts])
 maybeModifyState f@(CaseFunction name args body) = modify $ over functions (f:)
 maybeModifyState x = return ()
 
+-- special case: empty lines don't need any parsing
+parseRuby :: Ruby -> StateT CodeState IO Ruby
+parseRuby (Unresolved "") = return $ String ""
 -- | This is what computes the AST. The main method is the one that parses
 -- `Unresolved` objects. There are others which will take an existing Ruby
 -- object, and check if any parts of it are unresolved. If so, it feeds
 -- them back into `parseRuby`.
-parseRuby :: Ruby -> StateT CodeState IO Ruby
 parseRuby (Unresolved line) = do
   state <- get
   case parse (parseLine state) "" line of
@@ -384,6 +386,6 @@ isAtom str = case parse parseAtom "" str of
                Right _ -> True
 
 combineFuncBodies newFunction@(Function n a (Unresolved body)) caseFunc@(CaseFunction cn ca cbody) = Function n a (Unresolved newBody)
-    where newBody = printf "if %s\n%s\nelse\n%s\nend\n" cond cbody body
+    where newBody = printf "if %s\n    %s\n  else\n    %s\n  end" cond cbody body
           cond = join " && " $ map (\(a1, a2) -> a1 ++ " == " ++ a2) zippedArgs
           zippedArgs = zip a ca
