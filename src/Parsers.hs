@@ -55,7 +55,7 @@ parseFunctionArg = do
     return $ first:rest
 
 parseCaseFunctionArg :: Stream s m Char => ParsecT s u m String
-parseCaseFunctionArg = many1 $ alphaNum <|> oneOf "*&'\""
+parseCaseFunctionArg = many1 $ alphaNum <|> oneOf "*&'\"_"
 
 parseAtom :: Stream s m Char => ParsecT s u m String
 parseAtom = do

@@ -1,1 +1,2 @@
-sum(.to_f . .chomp <$> File.readlines(filename))
+fact 1 _ := 1
+fact x y := x * fact(x - 1)
