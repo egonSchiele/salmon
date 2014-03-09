@@ -67,6 +67,50 @@ def parse(a)
 end
 ```
 
+### Pattern matching for functions
+
+```
+fact 1 := 1
+fact x := x * fact(x - 1)
+```
+
+becomes
+
+```ruby
+def fact(x)
+  if x == 1
+    1
+  else
+    x * fact(x - 1)
+  end
+end
+```
+
+Some caveats:
+
+- Every function with pattern matching *must* have a "fallback" case In the previous example, `fact x := ...` is the fallback case. That is needed to get the variable names (this is just a simple transpiler after all).
+
+- If you use a variable in a non-fallback case, it must be the same name as the fallback case. i.e. something like this:
+
+```
+fact 1 z := 1
+fact x y := x * fact(x - 1)
+```
+
+will get translated to:
+
+```ruby
+def fact(x, y)
+  if x == 1 && y == z
+    1
+  else
+    x * fact(x - 1)
+  end
+end
+```
+
+which may or may not be what you intended.
+
 ### Function composition
 
 Function composition can be used in three places.
