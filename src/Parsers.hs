@@ -170,7 +170,7 @@ parseFunctionCall state = do
     period <- option "" (string ".")
     name <- parseAtom
     char '('
-    rest <- parseList state
+    rest <- option (String "") $ parseList state
     char ')'
     case rest of
       BlockFunction _ -> return $ List [Atom $ period ++ name, rest]

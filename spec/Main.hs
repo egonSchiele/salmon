@@ -60,7 +60,8 @@ main = hspec $ do
     bulkCheck $
       [("simple definition", "add a b := a + b", "def add(a, b)\n  a + b\nend"),
        ("call with an fmap inside the call", "sum(.to_f . .chomp <$> File.readlines(filename))", "sum(File.readlines(filename).map { |a| a.chomp.to_f })"),
-       ("call with apply instead of parenthesis", "sum $ .to_f . .chomp <$> File.readlines(filename)", "sum(File.readlines(filename).map { |a| a.chomp.to_f })")
+       ("call with apply instead of parenthesis", "sum $ .to_f . .chomp <$> File.readlines(filename)", "sum(File.readlines(filename).map { |a| a.chomp.to_f })"),
+       ("function call with parens", "hello()", "hello()")
       ]
     
   describe "function composition" $ do
