@@ -10,3 +10,5 @@
     sum(.chomp <$> File.readlines(file))
 
 - Basically, can't handle nested parenthesis very well right now because one of the parsers for parseLine is greedy
+
+- Support multi-line strings with %{} etc

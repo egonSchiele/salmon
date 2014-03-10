@@ -126,9 +126,22 @@ parseBracketed state = do
       BlockFunction _ -> return x
       _ -> return $ Parens x
 
+parsePRFunctionDef :: RubyParser
+parsePRFunctionDef = do
+    string "def "
+    rest <- many1 anyChar
+    return $ String ("def " ++ rest)
+
+parsePlainRuby :: RubyParser
+parsePlainRuby = do
+    ws <- option (String "") parseWhitespace
+    rest <- parsePRFunctionDef
+    return $ List [ws, rest]
+
 -- TODO embedded???
 parseLine :: CodeState -> RubyParser
 parseLine state = parseComment
+      <||> parsePlainRuby
       <||> parseClass
       <||> parseFunction
       <||> parseCaseFunction

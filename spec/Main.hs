@@ -91,6 +91,10 @@ main = hspec $ do
          ("one arg when the other is a symbol", "(1..10).map(&add(:foo, _))", "(1..10).map { |a| add(:foo, a) }")
         ]
 
+  describe "regular ruby" $ do
+      bulkCheck $
+        [("defs with a block shouldn't get parsed as a block function call", "def method_missing(*args, &block)", "def method_missing(*args, &block)")]
+
   describe "infix" $ do
       bulkCheck $
         [("using a function as infix", "1 `add` 2", "add(1, 2)")]
