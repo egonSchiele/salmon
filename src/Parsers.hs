@@ -329,7 +329,7 @@ parseRuby (Unresolved "") = return $ String ""
 parseRuby (Unresolved line) = do
   state <- get
   case parse (parseLine state) "" line of
-      Left err -> error (show err)
+      Left err -> error $ printf "error while parsing line: %s\nerror: %s" line (show err)
       Right result -> do
                 newResult <- parseRuby result
                 maybeModifyState newResult

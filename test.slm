@@ -1,2 +1,5 @@
-fact 1 _ := 1
-fact x y := x * fact(x - 1)
+fib 0 := 0
+fib 1 := 1
+fib x := fib(x - 1) + fib(x - 2)
+
+(1..10).each(&(p . fib))
