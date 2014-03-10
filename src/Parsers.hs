@@ -120,7 +120,7 @@ parseList state = do
 parseBracketed :: CodeState -> RubyParser
 parseBracketed state = do
     char '('
-    x <- parseList state
+    x <- parseBlockFunction <||> parseList state
     char ')'
     case x of
       BlockFunction _ -> return x
@@ -135,13 +135,12 @@ parsePRFunctionDef = do
 parsePlainRuby :: RubyParser
 parsePlainRuby = do
     ws <- option (String "") parseWhitespace
-    rest <- parsePRFunctionDef
+    rest <- parsePRFunctionDef <||> parseComment
     return $ List [ws, rest]
 
 -- TODO embedded???
 parseLine :: CodeState -> RubyParser
-parseLine state = parseComment
-      <||> parsePlainRuby
+parseLine state = parsePlainRuby
       <||> parseClass
       <||> parseFunction
       <||> parseCaseFunction
@@ -165,7 +164,6 @@ parseExpr state = parseString
       <||> parseBracketed state
       <||> parseCurriedFunction
       <||> parseFunctionCall state
-      <||> parseBlockFunction
       <||> parseComposition
       <||> parseNew state
       <||> parseInfixCall
@@ -183,7 +181,7 @@ parseFunctionCall state = do
     period <- option "" (string ".")
     name <- parseAtom
     char '('
-    rest <- option (String "") $ parseList state
+    rest <- option (String "") $ (parseBlockFunction <||> parseList state)
     char ')'
     case rest of
       BlockFunction _ -> return $ List [Atom $ period ++ name, rest]
