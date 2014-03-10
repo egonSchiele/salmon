@@ -93,7 +93,11 @@ main = hspec $ do
 
   describe "regular ruby" $ do
       bulkCheck $
-        [("defs with a block shouldn't get parsed as a block function call", "def method_missing(*args, &block)", "def method_missing(*args, &block)")]
+        [("defs with a block shouldn't get parsed as a block function call", "def method_missing(*args, &block)", "def method_missing(*args, &block)"),
+        ("string interpolation should get parsed correctly", "\"hello #{1 + 1}\"", "\"hello #{1 + 1}\""),
+        ("string interpolation with a nested string", "\"hello #{name \"adit\"}\"", "\"hello #{name \"adit\"}\""),
+        ("string interpolation with nested salmon", "\"hello #{incr <$> (1..10)}\"", "\"hello #{(1..10).map { |a| incr(a) }}\"")
+        ]
 
   describe "infix" $ do
       bulkCheck $
