@@ -151,7 +151,7 @@ parseExpr :: CodeState -> RubyParser
 parseExpr state = parseString
       <||> parseBracketed state
       <||> parseCurriedFunction
-      <||> parseFunctionCall
+      <||> parseFunctionCall state
       <||> parseBlockFunction
       <||> parseComposition
       <||> parseNew state
@@ -165,13 +165,16 @@ parseExpr state = parseString
 -- won't parse it correctly into an atom and an unresolved...so this
 -- function exists. DON'T REMOVE THE char '('...it should only parse
 -- function calls that use parenthesis!
-parseFunctionCall :: RubyParser
-parseFunctionCall = do
+parseFunctionCall :: CodeState -> RubyParser
+parseFunctionCall state = do
     period <- option "" (string ".")
     name <- parseAtom
     char '('
-    rest <- many1 anyChar
-    return $ List [Atom $ period ++ name, Unresolved $ "(" ++ rest]
+    rest <- parseList state
+    char ')'
+    case rest of
+      BlockFunction _ -> return $ List [Atom $ period ++ name, rest]
+      _ -> return $ List [Atom $ period ++ name, String "(", rest, String ")"]
 
 parseCaseFunction :: RubyParser
 parseCaseFunction = do
