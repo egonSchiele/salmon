@@ -3,5 +3,5 @@
 - support in vim
 
 # CURRENT BUGS:
-- Support multi-line strings with %{} etc
+- Support multi-line strings with %{}, here docs...
 - support parsing salmon in string interpolation.
