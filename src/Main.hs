@@ -13,7 +13,7 @@ convert infile outfile = do
     let headContents = toRuby <$> (state ^. headExtras)
         bodyContents = toRuby <$> (concatRuby rubyLines)
         newContents = headContents ++ bodyContents
-  
+
     liftIO $ writeFile outfile (join "\n" newContents)
 
 printHelp = do
