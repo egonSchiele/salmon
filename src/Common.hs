@@ -23,7 +23,7 @@ import Control.Applicative hiding (optional, (<|>), many)
 import Text.Printf
 import Control.Monad hiding (join)
 import Control.Monad.State hiding (join)
-import Control.Lens
+import Control.Lens hiding (noneOf, uncons)
 import Data.Maybe
 import System.Directory
 import Data.Char

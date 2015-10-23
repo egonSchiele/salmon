@@ -1,19 +1,19 @@
 name:                salmon
 version:             0.1.0.0
--- synopsis:            
--- description:         
+-- synopsis:
+-- description:
 homepage:            http://adit.io
 license:             BSD3
 license-file:        LICENSE
 author:              Aditya Bhargava
 maintainer:          bluemangroupie@gmail.com
--- copyright:           
--- category:            
+-- copyright:
+-- category:
 build-type:          Simple
 cabal-version:       >=1.8
 
 executable salmon
-  build-depends:       base ==4.6.*, lens ==3.9.0.2, parsec ==3.1.5, mtl ==2.1.2, directory ==1.2.0.1
+  build-depends:       base ==4.8.*, lens ==4.12.3, parsec ==3.1.9, mtl ==2.2.1, directory ==1.2.2.0
   hs-source-dirs:      src
   main-is: Main.hs
 
@@ -24,6 +24,6 @@ executable salmon
 
 Test-Suite test-salmon
   type:       exitcode-stdio-1.0
-  build-depends:       base ==4.6.*, lens ==3.9.0.2, parsec ==3.1.5, mtl ==2.1.2, directory ==1.2.0.1, hspec
+  build-depends:       base ==4.8.*, lens ==4.12.3, parsec ==3.1.9, mtl ==2.2.1, directory ==1.2.2.0
   hs-source-dirs:      spec, src
   main-is:             Main.hs
